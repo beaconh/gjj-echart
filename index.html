@@ -4,293 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>还款明细图表</title>
+  <link rel="stylesheet" href="./utils/elementplus@2.14.3.css" />
+  <link rel="stylesheet" href="./assets/app.css" />
   <script src="./utils/vue@v3.5.40.min.js"></script>
+  <script src="./utils/elementplus@2.14.3.js"></script>
+  <script src="./utils/elementplus-zh-cn@2.14.3.js"></script>
   <script src="./utils/echarts.min.js"></script>
-  <style>
-    :root {
-      --bg: #f0f4f8;
-      --bg-deep: #dce6f0;
-      --surface: #ffffff;
-      --text: #1a2332;
-      --muted: #5a6a7e;
-      --accent: #0d7a6f;
-      --principal: #2b6cb0;
-      --interest: #c05621;
-      --penalty: #9b2c2c;
-      --total: #0d7a6f;
-      --border: #c8d4e0;
-      --shadow: 0 8px 28px rgba(26, 35, 50, 0.08);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: var(--text);
-      min-height: 100vh;
-      background:
-        radial-gradient(ellipse 80% 50% at 10% -10%, #c5ebe4 0%, transparent 55%),
-        radial-gradient(ellipse 60% 40% at 90% 0%, #c9daf0 0%, transparent 50%),
-        linear-gradient(165deg, var(--bg) 0%, var(--bg-deep) 100%);
-    }
-
-    #app {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 28px 20px 48px;
-    }
-
-    header {
-      margin-bottom: 28px;
-    }
-
-    header h1 {
-      font-size: clamp(1.6rem, 3vw, 2.1rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: var(--text);
-    }
-
-    header p {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      margin-bottom: 20px;
-    }
-
-    .stat {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px 18px;
-      box-shadow: var(--shadow);
-    }
-
-    .stat .label {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .stat .value {
-      font-size: 1.35rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .stat.principal .value { color: var(--principal); }
-    .stat.interest .value { color: var(--interest); }
-    .stat.penalty .value { color: var(--penalty); }
-    .stat.total .value { color: var(--total); }
-
-    .charts {
-      display: grid;
-      gap: 18px;
-    }
-
-    .chart-panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 16px 8px;
-      box-shadow: var(--shadow);
-    }
-
-    .chart-panel h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      padding: 4px 8px 12px;
-      color: var(--text);
-    }
-
-    .chart {
-      width: 100%;
-      height: 380px;
-    }
-
-    .chart.short {
-      height: 320px;
-    }
-
-    .row-2 {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 18px;
-    }
-
-    .loading, .error {
-      text-align: center;
-      padding: 80px 20px;
-      color: var(--muted);
-      font-size: 1.05rem;
-    }
-
-    .error { color: var(--penalty); }
-
-    .list-panel {
-      margin-top: 18px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 18px 20px;
-      box-shadow: var(--shadow);
-    }
-
-    .list-panel h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .list-panel .hint {
-      color: var(--muted);
-      font-size: 0.85rem;
-      margin-bottom: 14px;
-    }
-
-    .table-wrap {
-      overflow: auto;
-      max-height: 600px;
-      height: 600px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-    }
-
-    table.period-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    table.period-table th,
-    table.period-table td {
-      padding: 10px 12px;
-      text-align: right;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-
-    table.period-table th:first-child,
-    table.period-table td:first-child,
-    table.period-table th:nth-child(2),
-    table.period-table td:nth-child(2),
-    table.period-table th:nth-child(3),
-    table.period-table td:nth-child(3) {
-      text-align: left;
-    }
-
-    table.period-table thead th {
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 0.8rem;
-      background: #f5f8fb;
-      position: sticky;
-      top: 0;
-    }
-
-    table.period-table tbody tr.summary {
-      cursor: default;
-    }
-
-    table.period-table tbody tr.summary.merged {
-      cursor: pointer;
-      background: #f0faf8;
-    }
-
-    table.period-table tbody tr.summary.merged:hover {
-      background: #e4f5f1;
-    }
-
-    table.period-table tbody tr.summary.merged.open {
-      background: #d8f0ea;
-    }
-
-    table.period-table tbody tr.detail {
-      background: #fafbfc;
-    }
-
-    table.period-table tbody tr.detail td {
-      color: var(--muted);
-      font-size: 0.85rem;
-      padding-top: 7px;
-      padding-bottom: 7px;
-      border-bottom: 1px dashed #dce4ee;
-    }
-
-    table.period-table tbody tr.detail td:first-child {
-      padding-left: 28px;
-    }
-
-    .period-cell {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 600;
-    }
-
-    .toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      background: #fff;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-
-    .toggle.placeholder {
-      visibility: hidden;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      background: #d8f0ea;
-      color: var(--accent);
-    }
-
-    .badge.single {
-      background: #eef2f6;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .detail-tag {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 500;
-    }
-
-    .num-total { color: var(--total); font-weight: 600; }
-    .num-principal { color: var(--principal); }
-    .num-interest { color: var(--interest); }
-    .num-penalty { color: var(--penalty); }
-
-    @media (max-width: 900px) {
-      .stats { grid-template-columns: repeat(2, 1fr); }
-      .row-2 { grid-template-columns: 1fr; }
-      .chart { height: 300px; }
-    }
-
-    @media (max-width: 480px) {
-      .stats { grid-template-columns: 1fr; }
-    }
-  </style>
+  <script src="./assets/lineChart.js"></script>
 </head>
 <body>
   <div id="app">
@@ -302,39 +22,114 @@
         <p>共 {{ list.length }} 期 · {{ list[0].date }} 至 {{ list[list.length - 1].date }}</p>
       </header>
 
-      <section class="stats">
-        <div class="stat total">
-          <div class="label">累计还款</div>
-          <div class="value">{{ fmt(sum.total) }}</div>
+      <section class="overview">
+        <div class="overview-panel paid">
+          <h3>已还概况</h3>
+          <div class="hero-metric">
+            <span class="label">累计还款</span>
+            <span class="value">{{ fmt(sum.total) }}</span>
+          </div>
+          <div class="paid-mix">
+            <div class="bar">
+              <span class="seg principal" :style="{ width: paidStats.principalPct + '%' }"></span>
+              <span class="seg interest" :style="{ width: paidStats.interestPct + '%' }"></span>
+              <span class="seg penalty" :style="{ width: paidStats.penaltyPct + '%' }"></span>
+            </div>
+            <div class="meta">
+              <span class="principal">本金 {{ paidStats.principalPct }}%</span>
+              <span class="interest">利息 {{ paidStats.interestPct }}%</span>
+              <span class="penalty">罚息 {{ paidStats.penaltyPct }}%</span>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric principal">
+              <span class="k">本金</span>
+              <span class="v">{{ fmt(sum.principal) }}</span>
+            </div>
+            <div class="metric interest">
+              <span class="k">利息</span>
+              <span class="v">{{ fmt(sum.interest) }}</span>
+            </div>
+            <div class="metric penalty">
+              <span class="k">罚息</span>
+              <span class="v">{{ fmt(sum.penalty) }}</span>
+            </div>
+          </div>
+          <div class="metric-row four paid-extra">
+            <div class="metric muted">
+              <span class="k">已还期数</span>
+              <span class="v">{{ paidStats.periods }} 期</span>
+            </div>
+            <div class="metric muted">
+              <span class="k">平均每期</span>
+              <span class="v">{{ fmt(paidStats.avgTotal) }}</span>
+            </div>
+            <div class="metric interest">
+              <span class="k">利息占比</span>
+              <span class="v">{{ paidStats.interestPct }}%</span>
+            </div>
+            <div class="metric muted">
+              <span class="k">还款跨度</span>
+              <span class="v">{{ paidStats.spanText }}</span>
+            </div>
+          </div>
+          <p class="forecast-note">
+            {{ paidStats.rangeText }} · 共 {{ paidStats.records }} 条明细
+          </p>
         </div>
-        <div class="stat principal">
-          <div class="label">累计本金</div>
-          <div class="value">{{ fmt(sum.principal) }}</div>
-        </div>
-        <div class="stat interest">
-          <div class="label">累计利息</div>
-          <div class="value">{{ fmt(sum.interest) }}</div>
-        </div>
-        <div class="stat penalty">
-          <div class="label">累计罚息</div>
-          <div class="value">{{ fmt(sum.penalty) }}</div>
+
+        <div class="overview-panel debt">
+          <h3>剩余与测算</h3>
+          <div class="hero-metric">
+            <span class="label">还欠银行（剩余本金）</span>
+            <span class="value">{{ fmt(remainPrincipal) }}</span>
+          </div>
+          <div class="loan-progress">
+            <div class="bar"><span :style="{ width: loanProgress + '%' }"></span></div>
+            <div class="meta">
+              <span>原贷 {{ fmt(loanPrincipal) }}</span>
+              <span>已还本金 {{ loanProgress }}%</span>
+            </div>
+          </div>
+          <div class="metric-row four">
+            <div class="metric muted">
+              <span class="k">测算利率</span>
+              <span class="v">{{ forecast.rate }}%</span>
+            </div>
+            <div class="metric muted metric-link" @click="openScheduleDialog">
+              <span class="k">剩余期数</span>
+              <span class="v">{{ forecast.periods }} 期</span>
+              <span class="hint">点击查看待还款明细</span>
+            </div>
+            <div class="metric interest">
+              <span class="k">预计剩余利息</span>
+              <span class="v">{{ fmt(forecast.interest) }}</span>
+            </div>
+            <div class="metric total">
+              <span class="k">预计还要还</span>
+              <span class="v">{{ fmt(forecast.total) }}</span>
+            </div>
+          </div>
+          <p class="forecast-note">
+            等额本金 · 年利率 {{ forecast.rate }}% · 到期 {{ forecast.maturity }} · 月供本金约 {{ fmt(forecast.monthlyPrincipal) }}；未含提前还款或利率再调整。
+          </p>
         </div>
       </section>
 
       <section class="charts">
         <div class="chart-panel">
-          <h2>每期还款合计（本金 + 利息 + 罚息）</h2>
+          <h2>每期还款合计（本金 + 利息 + 罚息）· 叠加利率</h2>
           <div ref="stackChart" class="chart"></div>
         </div>
 
         <div class="chart-panel">
-          <h2>按年汇总（本金 / 利息 / 罚息）</h2>
+          <h2>按年汇总（本金 / 利息 / 罚息）· 点击年份可定位到上图</h2>
           <div ref="yearChart" class="chart short"></div>
         </div>
 
         <div class="row-2">
           <div class="chart-panel">
-            <h2>每期还款总额走势</h2>
+            <h2>每期还款总额走势 · 叠加利率</h2>
             <div ref="lineChart" class="chart short"></div>
           </div>
           <div class="chart-panel">
@@ -345,89 +140,474 @@
       </section>
 
       <section class="list-panel">
-        <h2>还款明细列表</h2>
+        <div class="list-header">
+          <h2>还款明细列表</h2>
+          <div class="list-actions">
+            <el-button type="primary" @click="openAddDialog">添加数据</el-button>
+            <el-button @click="printAllData">打印全部数据</el-button>
+            <el-button @click="printAddedData">打印新增数据</el-button>
+          </div>
+        </div>
         <p class="hint">
-          同一期多条已合并显示合计；带「N条合计」标记的可点击展开查看原始明细。
+          同一期多条已合并显示合计；带「N条合计」标记的可展开查看明细。本次新增的数据支持编辑和删除。
         </p>
         <div class="table-wrap">
-          <table class="period-table">
-            <thead>
-              <tr>
-                <th>期数</th>
-                <th>合并</th>
-                <th>日期</th>
-                <th>本金</th>
-                <th>利息</th>
-                <th>罚息</th>
-                <th>合计</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="row in tableList" :key="row.period">
-                <tr
-                  class="summary"
-                  :class="{ merged: row.count > 1, open: expanded[row.period] }"
-                  @click="row.count > 1 && toggle(row.period)"
-                >
-                  <td>
-                    <div class="period-cell">
-                      <span
-                        class="toggle"
-                        :class="{ placeholder: row.count <= 1 }"
-                      >{{ expanded[row.period] ? '−' : '+' }}</span>
-                      第{{ row.period }}期
-                    </div>
-                  </td>
-                  <td>
-                    <span
-                      class="badge"
-                      :class="{ single: row.count <= 1 }"
-                    >{{ row.count > 1 ? row.count + '条合计' : '单条' }}</span>
-                  </td>
-                  <td>{{ row.date }}</td>
-                  <td class="num-principal">{{ fmt(row.principal) }}</td>
-                  <td class="num-interest">{{ fmt(row.interest) }}</td>
-                  <td class="num-penalty">{{ fmt(row.penalty) }}</td>
-                  <td class="num-total">{{ fmt(row.total) }}</td>
-                </tr>
-                <tr
-                  v-for="(item, idx) in (expanded[row.period] ? row.items : [])"
-                  :key="row.period + '-' + idx"
-                  class="detail"
-                >
-                  <td>
-                    <span class="detail-tag">明细 {{ idx + 1 }}/{{ row.count }}</span>
-                  </td>
-                  <td></td>
-                  <td>{{ item.date }}</td>
-                  <td>{{ fmt(item.principal) }}</td>
-                  <td>{{ fmt(item.interest) }}</td>
-                  <td>{{ fmt(item.penalty) }}</td>
-                  <td>{{ fmt(item.total) }}</td>
-                </tr>
+          <el-table
+            :data="tableList"
+            height="600"
+            row-key="period"
+            :row-class-name="tableRowClass"
+            stripe
+          >
+            <el-table-column type="expand" width="48">
+              <template #default="{ row }">
+                <div v-if="row.count > 1" class="detail-expand">
+                  <el-table :data="row.items" size="small" border>
+                    <el-table-column
+                      type="index"
+                      label="明细"
+                      width="72"
+                      :index="(i) => `${i + 1}/${row.count}`"
+                    ></el-table-column>
+                    <el-table-column prop="date" label="日期" min-width="110"></el-table-column>
+                    <el-table-column label="利率" width="90">
+                      <template #default="{ row: item }">
+                        <span class="num-rate">{{ fmtRate(rowRate(item)) }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="本金" min-width="110" align="right">
+                      <template #default="{ row: item }">{{ fmt(item.principal) }}</template>
+                    </el-table-column>
+                    <el-table-column label="利息" min-width="110" align="right">
+                      <template #default="{ row: item }">{{ fmt(item.interest) }}</template>
+                    </el-table-column>
+                    <el-table-column label="罚息" min-width="100" align="right">
+                      <template #default="{ row: item }">{{ fmt(item.penalty) }}</template>
+                    </el-table-column>
+                    <el-table-column label="合计" min-width="110" align="right">
+                      <template #default="{ row: item }">{{ fmt(item.total) }}</template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="130" fixed="right">
+                      <template #default="{ row: item }">
+                        <template v-if="isAddedItem(item)">
+                          <el-button link type="primary" @click="openEditDialog(item)">编辑</el-button>
+                          <el-button link type="danger" @click="deleteItem(item)">删除</el-button>
+                        </template>
+                        <span v-else class="op-muted">—</span>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
               </template>
-            </tbody>
-          </table>
+            </el-table-column>
+            <el-table-column label="期数" min-width="120">
+              <template #default="{ row }">
+                <strong>第{{ row.period }}期</strong>
+                <span v-if="isAddedPeriod(row)" class="badge added">新增</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="合并" width="110">
+              <template #default="{ row }">
+                <span class="badge" :class="{ single: row.count <= 1 }">
+                  {{ row.count > 1 ? row.count + '条合计' : '单条' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="date" label="日期" min-width="110"></el-table-column>
+            <el-table-column label="利率" width="90">
+              <template #default="{ row }">
+                <span class="num-rate">{{ fmtRate(rowRate(row)) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="本金" min-width="110" align="right">
+              <template #default="{ row }">
+                <span class="num-principal">{{ fmt(row.principal) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="利息" min-width="110" align="right">
+              <template #default="{ row }">
+                <span class="num-interest">{{ fmt(row.interest) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="罚息" min-width="100" align="right">
+              <template #default="{ row }">
+                <span class="num-penalty">{{ fmt(row.penalty) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="合计" min-width="120" align="right">
+              <template #default="{ row }">
+                <span class="num-total">{{ fmt(row.total) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="140" fixed="right">
+              <template #default="{ row }">
+                <template v-if="row.count === 1 && isAddedItem(row.items[0])">
+                  <el-button link type="primary" @click="openEditDialog(row.items[0])">编辑</el-button>
+                  <el-button link type="danger" @click="deleteItem(row.items[0])">删除</el-button>
+                </template>
+                <span v-else-if="hasAddedInPeriod(row)" class="op-muted">展开后编辑</span>
+                <span v-else class="op-muted">—</span>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
       </section>
+
+      <el-dialog
+        v-model="addVisible"
+        :title="editingIndex == null ? '添加数据' : '编辑数据'"
+        width="480px"
+        destroy-on-close
+        @closed="resetAddForm"
+      >
+        <el-form
+          ref="addFormRef"
+          class="add-form"
+          :model="addForm"
+          :rules="addRules"
+          label-width="88px"
+        >
+          <el-form-item label="期数" prop="period">
+            <el-input-number
+              v-model="addForm.period"
+              :min="1"
+              :step="1"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="还款日期" prop="date">
+            <el-date-picker
+              v-model="addForm.date"
+              type="date"
+              placeholder="选择日期"
+              format="YYYY/MM/DD"
+              value-format="YYYY/MM/DD"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="editingIndex == null" label="利率">
+            <el-checkbox v-model="addForm.keepRate" @change="onKeepRateChange">
+              沿用之前利率（{{ fmtRate(lastRatePreview) }}）
+            </el-checkbox>
+          </el-form-item>
+          <el-form-item
+            v-if="editingIndex != null || !addForm.keepRate"
+            label="利率(%)"
+            prop="rate"
+          >
+            <el-input-number
+              v-model="addForm.rate"
+              :min="0"
+              :precision="2"
+              :step="0.05"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="本金" prop="principal">
+            <el-input-number
+              v-model="addForm.principal"
+              :min="0"
+              :precision="2"
+              :step="100"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="利息" prop="interest">
+            <el-input-number
+              v-model="addForm.interest"
+              :min="0"
+              :precision="2"
+              :step="10"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="罚息" prop="penalty">
+            <el-input-number
+              v-model="addForm.penalty"
+              :min="0"
+              :precision="2"
+              :step="10"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="合计">
+            <span class="form-total">{{ fmt(addFormTotal) }}</span>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="addVisible = false">取消</el-button>
+          <el-button type="primary" :loading="adding" @click="submitAdd">
+            {{ editingIndex == null ? '确定添加' : '保存修改' }}
+          </el-button>
+        </template>
+      </el-dialog>
+      <el-dialog
+        v-model="scheduleVisible"
+        title="待还款明细"
+        width="860px"
+        destroy-on-close
+      >
+        <div class="schedule-summary">
+          <span>利率 <strong>{{ forecast.rate }}%</strong></span>
+          <span>剩余本金 <strong>{{ fmt(remainPrincipal) }}</strong></span>
+          <span>剩余期数 <strong>{{ forecast.periods }}</strong></span>
+          <span>预计利息 <strong>{{ fmt(forecast.interest) }}</strong></span>
+          <span>预计合计 <strong>{{ fmt(forecast.total) }}</strong></span>
+        </div>
+        <el-table :data="scheduleRows" height="480" stripe border size="small">
+          <el-table-column prop="seq" label="序" width="64" align="center"></el-table-column>
+          <el-table-column prop="period" label="期数" width="88">
+            <template #default="{ row }">第{{ row.period }}期</template>
+          </el-table-column>
+          <el-table-column prop="date" label="预计日期" min-width="110"></el-table-column>
+          <el-table-column label="利率" width="80">
+            <template #default="{ row }">{{ fmtRate(row.rate) }}</template>
+          </el-table-column>
+          <el-table-column label="本金" min-width="110" align="right">
+            <template #default="{ row }">
+              <span class="num-principal">{{ fmt(row.principal) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="利息" min-width="110" align="right">
+            <template #default="{ row }">
+              <span class="num-interest">{{ fmt(row.interest) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="合计" min-width="110" align="right">
+            <template #default="{ row }">
+              <span class="num-total">{{ fmt(row.total) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="剩余本金" min-width="120" align="right">
+            <template #default="{ row }">{{ fmt(row.balance) }}</template>
+          </el-table-column>
+        </el-table>
+        <template #footer>
+          <el-button @click="scheduleVisible = false">关闭</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="jsonVisible"
+        :title="jsonTitle"
+        width="720px"
+        destroy-on-close
+      >
+        <div class="json-toolbar">
+          <el-button type="primary" @click="copyJson">复制</el-button>
+        </div>
+        <el-input
+          v-model="jsonText"
+          class="json-preview"
+          type="textarea"
+          :rows="18"
+          readonly
+        />
+        <template #footer>
+          <el-button @click="jsonVisible = false">关闭</el-button>
+        </template>
+      </el-dialog>
     </template>
   </div>
 
   <script>
-    const { createApp, ref, computed, onMounted, nextTick, onBeforeUnmount } = Vue;
+    const { createApp, ref, computed, reactive, onMounted, nextTick, onBeforeUnmount } = Vue;
+    const { ElMessage, ElMessageBox } = ElementPlus;
 
-    createApp({
+    /** 公积金贷款利率档期 */
+    const RATE_SCHEDULE = [
+      {
+        from: '2022/05/01',
+        to: '2022/12/31',
+        rate: 3.25,
+        label: '2022年5月（放贷时）至 2022年12月31日',
+      },
+      {
+        from: '2023/01/01',
+        to: '2024/12/31',
+        rate: 3.1,
+        label: '2023年1月1日 至 2024年12月31日',
+      },
+      {
+        from: '2025/01/01',
+        to: '2025/12/31',
+        rate: 2.85,
+        label: '2025年1月1日 至 2025年12月31日',
+      },
+      {
+        from: '2026/01/01',
+        to: null,
+        rate: 2.6,
+        label: '2026年1月1日起',
+      },
+    ];
+
+    function parseDateKey(s) {
+      const m = String(s).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+      if (!m) return '';
+      return `${m[1]}${String(m[2]).padStart(2, '0')}${String(m[3]).padStart(2, '0')}`;
+    }
+
+    function rateByDate(dateStr) {
+      const key = parseDateKey(dateStr);
+      if (!key) return RATE_SCHEDULE[RATE_SCHEDULE.length - 1].rate;
+      for (const item of RATE_SCHEDULE) {
+        const from = parseDateKey(item.from);
+        const to = item.to ? parseDateKey(item.to) : '99991231';
+        if (key >= from && key <= to) return item.rate;
+      }
+      if (key < parseDateKey(RATE_SCHEDULE[0].from)) return RATE_SCHEDULE[0].rate;
+      return RATE_SCHEDULE[RATE_SCHEDULE.length - 1].rate;
+    }
+
+    function rateByYear(year) {
+      return rateByDate(`${year}/06/15`);
+    }
+
+    function fmtRate(rate) {
+      return `${Number(rate).toFixed(2)}%`;
+    }
+
+    /** 原贷本金（元） */
+    const LOAN_PRINCIPAL = 700000;
+    /** 测算到期日 */
+    const FORECAST_MATURITY = '2040/02/18';
+
+    function parseYearMonth(dateStr) {
+      const m = String(dateStr).match(/(\d{4})\D(\d{1,2})/);
+      if (!m) return null;
+      return { year: Number(m[1]), month: Number(m[2]) };
+    }
+
+    /** 从最近一期的下一月到到期月（含）的期数 */
+    function remainingPeriods(lastDate, maturity) {
+      const start = parseYearMonth(lastDate);
+      const end = parseYearMonth(maturity);
+      if (!start || !end) return 0;
+      let y = start.year;
+      let m = start.month + 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+      return Math.max(0, (end.year - y) * 12 + (end.month - m) + 1);
+    }
+
+    /** 等额本金：剩余本金 + 全程固定年利率下的利息合计 */
+    function calcEqualPrincipalForecast(principal, annualRatePercent, periods) {
+      if (principal <= 0 || periods <= 0) {
+        return {
+          periods: 0,
+          monthlyPrincipal: 0,
+          interest: 0,
+          total: 0,
+        };
+      }
+      const r = annualRatePercent / 100 / 12;
+      const monthlyPrincipal = principal / periods;
+      let balance = principal;
+      let interest = 0;
+      for (let k = 1; k <= periods; k++) {
+        interest += balance * r;
+        balance -= k === periods ? balance : monthlyPrincipal;
+      }
+      return {
+        periods,
+        monthlyPrincipal,
+        interest,
+        total: principal + interest,
+      };
+    }
+
+    function addMonths(year, month, day, offset) {
+      const d = new Date(year, month - 1 + offset, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      const lastDay = new Date(y, m, 0).getDate();
+      const dd = Math.min(day, lastDay);
+      return `${y}/${String(m).padStart(2, '0')}/${String(dd).padStart(2, '0')}`;
+    }
+
+    /** 生成等额本金待还款明细 */
+    function buildRepaymentSchedule({
+      principal,
+      annualRatePercent,
+      periods,
+      lastDate,
+      startPeriod,
+    }) {
+      if (principal <= 0 || periods <= 0) return [];
+      const parsed = String(lastDate).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+      const year = parsed ? Number(parsed[1]) : new Date().getFullYear();
+      const month = parsed ? Number(parsed[2]) : new Date().getMonth() + 1;
+      const day = parsed ? Number(parsed[3]) : 20;
+      const r = annualRatePercent / 100 / 12;
+      const monthlyPrincipal = principal / periods;
+      let balance = principal;
+      const rows = [];
+      for (let k = 1; k <= periods; k++) {
+        const interest = balance * r;
+        const p = k === periods ? balance : monthlyPrincipal;
+        balance = Math.max(0, balance - p);
+        rows.push({
+          seq: k,
+          period: startPeriod + k - 1,
+          date: addMonths(year, month, day, k),
+          rate: annualRatePercent,
+          principal: p,
+          interest,
+          total: p + interest,
+          balance,
+        });
+      }
+      return rows;
+    }
+
+    const app = createApp({
       setup() {
         const list = ref([]);
         const ready = ref(false);
         const error = ref('');
-        const expanded = ref({});
         const stackChart = ref(null);
         const yearChart = ref(null);
         const lineChart = ref(null);
         const pieChart = ref(null);
+        const loanPrincipal = LOAN_PRINCIPAL;
+
+        const addVisible = ref(false);
+        const adding = ref(false);
+        const addFormRef = ref(null);
+        const addedRows = ref([]);
+        const editingIndex = ref(null);
+        const scheduleVisible = ref(false);
+        const jsonVisible = ref(false);
+        const jsonTitle = ref('');
+        const jsonText = ref('');
+        const addForm = reactive({
+          period: 1,
+          date: '',
+          keepRate: true,
+          rate: 2.6,
+          principal: 0,
+          interest: 0,
+          penalty: 0,
+        });
+        const addRules = {
+          period: [{ required: true, message: '请输入期数', trigger: 'blur' }],
+          date: [{ required: true, message: '请选择还款日期', trigger: 'change' }],
+          rate: [{ required: true, message: '请输入利率', trigger: 'blur' }],
+          principal: [{ required: true, message: '请输入本金', trigger: 'blur' }],
+          interest: [{ required: true, message: '请输入利息', trigger: 'blur' }],
+          penalty: [{ required: true, message: '请输入罚息', trigger: 'blur' }],
+        };
 
         const charts = [];
+        let stackInstance = null;
 
         /** 同一期多条记录合并为一条（本金/利息/罚息/总额相加），并保留明细 */
         function mergeByPeriod(rows) {
@@ -438,6 +618,7 @@
               map.set(key, {
                 period: row.period,
                 date: row.date,
+                rate: row.rate,
                 total: 0,
                 principal: 0,
                 interest: 0,
@@ -453,7 +634,11 @@
             item.penalty += row.penalty;
             item.count += 1;
             item.items.push({ ...row });
-            if (row.date > item.date) item.date = row.date;
+            if (row.date > item.date) {
+              item.date = row.date;
+              if (row.rate != null) item.rate = row.rate;
+            }
+            if (item.rate == null && row.rate != null) item.rate = row.rate;
           }
           return Array.from(map.values()).sort((a, b) => a.period - b.period);
         }
@@ -483,11 +668,8 @@
           return Array.from(map.values()).sort((a, b) => a.year.localeCompare(b.year));
         }
 
-        function toggle(period) {
-          expanded.value = {
-            ...expanded.value,
-            [period]: !expanded.value[period],
-          };
+        function tableRowClass({ row }) {
+          return row.count > 1 ? 'row-merged' : 'row-single';
         }
 
         const sum = computed(() => {
@@ -501,22 +683,386 @@
           return s;
         });
 
-        /** 列表倒序：期数从大到小 */
+        const remainPrincipal = computed(() =>
+          Math.max(0, loanPrincipal - sum.value.principal)
+        );
+
+        const loanProgress = computed(() => {
+          if (!loanPrincipal) return '0.00';
+          return ((sum.value.principal / loanPrincipal) * 100).toFixed(2);
+        });
+
+        const paidStats = computed(() => {
+          const s = sum.value;
+          const total = s.total || 0;
+          const pct = (n) => (total > 0 ? ((n / total) * 100).toFixed(1) : '0.0');
+          const periods = list.value.length;
+          const records = list.value.reduce((n, row) => n + (row.count || 1), 0);
+          const first = list.value[0];
+          const last = list.value[list.value.length - 1];
+          const firstDate = first?.date || '—';
+          const lastDate = last?.date || '—';
+
+          let spanText = '—';
+          const a = parseYearMonth(firstDate);
+          const b = parseYearMonth(lastDate);
+          if (a && b) {
+            const months = Math.max(0, (b.year - a.year) * 12 + (b.month - a.month));
+            const years = Math.floor(months / 12);
+            const rem = months % 12;
+            if (years > 0 && rem > 0) spanText = `${years}年${rem}个月`;
+            else if (years > 0) spanText = `${years}年`;
+            else spanText = `${Math.max(months, 1)}个月`;
+          }
+
+          return {
+            periods,
+            records,
+            avgTotal: periods ? total / periods : 0,
+            principalPct: pct(s.principal),
+            interestPct: pct(s.interest),
+            penaltyPct: pct(s.penalty),
+            spanText,
+            rangeText: `${firstDate} 至 ${lastDate}`,
+          };
+        });
+
+        const forecast = computed(() => {
+          const rate = lastRate();
+          const lastDate = list.value.length
+            ? list.value[list.value.length - 1].date
+            : todayStr();
+          const periods = remainingPeriods(lastDate, FORECAST_MATURITY);
+          const calc = calcEqualPrincipalForecast(
+            remainPrincipal.value,
+            rate,
+            periods
+          );
+          return {
+            rate,
+            maturity: FORECAST_MATURITY,
+            lastDate,
+            ...calc,
+          };
+        });
+
+        const scheduleRows = computed(() => {
+          const f = forecast.value;
+          if (!f.periods) return [];
+          const startPeriod = list.value.length
+            ? Math.max(...list.value.map((d) => d.period)) + 1
+            : 1;
+          return buildRepaymentSchedule({
+            principal: remainPrincipal.value,
+            annualRatePercent: f.rate,
+            periods: f.periods,
+            lastDate: f.lastDate,
+            startPeriod,
+          });
+        });
+
+        function openScheduleDialog() {
+          if (!forecast.value.periods) {
+            ElMessage.warning('当前没有待还款期数');
+            return;
+          }
+          scheduleVisible.value = true;
+        }
+
         const tableList = computed(() =>
           [...list.value].sort((a, b) => b.period - a.period)
+        );
+
+        const addFormTotal = computed(() =>
+          (Number(addForm.principal) || 0) +
+          (Number(addForm.interest) || 0) +
+          (Number(addForm.penalty) || 0)
         );
 
         const fmt = (n) =>
           n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+        function todayStr() {
+          const d = new Date();
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}/${m}/${day}`;
+        }
+
+        function nextPeriod() {
+          if (!list.value.length) return 1;
+          return Math.max(...list.value.map((d) => d.period)) + 1;
+        }
+
+        function nextIndex() {
+          const raw = list.value.flatMap((d) => d.items || [d]);
+          if (!raw.length) return 1;
+          return Math.max(...raw.map((d) => d.index || 0)) + 1;
+        }
+
+        /** 上一次利率：优先本次新增最后一条，否则取数据中最新一期 */
+        function lastRate() {
+          if (addedRows.value.length) {
+            const last = addedRows.value[addedRows.value.length - 1];
+            if (last.rate != null) return Number(last.rate);
+          }
+          const raw = list.value.flatMap((d) => d.items || [d]);
+          if (raw.length) {
+            const latest = [...raw].sort((a, b) => (b.index || 0) - (a.index || 0))[0];
+            if (latest.rate != null) return Number(latest.rate);
+            return rateByDate(latest.date);
+          }
+          return rateByDate(todayStr());
+        }
+
+        const lastRatePreview = computed(() => lastRate());
+
+        function rowRate(row) {
+          if (row && row.rate != null) return Number(row.rate);
+          return rateByDate(row?.date);
+        }
+
+        function onKeepRateChange(checked) {
+          if (!checked) {
+            addForm.rate = lastRate();
+          }
+        }
+
+        function isAddedItem(item) {
+          return !!item && addedRows.value.some((r) => r.index === item.index);
+        }
+
+        function hasAddedInPeriod(row) {
+          return (row.items || []).some((item) => isAddedItem(item));
+        }
+
+        function isAddedPeriod(row) {
+          const items = row.items || [];
+          return items.length > 0 && items.every((item) => isAddedItem(item));
+        }
+
+        function rebuildList(raw) {
+          list.value = mergeByPeriod(raw);
+        }
+
+        function openAddDialog() {
+          editingIndex.value = null;
+          addForm.period = nextPeriod();
+          addForm.date = todayStr();
+          addForm.keepRate = true;
+          addForm.rate = lastRate();
+          addForm.principal = 0;
+          addForm.interest = 0;
+          addForm.penalty = 0;
+          addVisible.value = true;
+        }
+
+        function openEditDialog(item) {
+          editingIndex.value = item.index;
+          addForm.period = item.period;
+          addForm.date = item.date;
+          addForm.keepRate = false;
+          addForm.rate = rowRate(item);
+          addForm.principal = item.principal;
+          addForm.interest = item.interest;
+          addForm.penalty = item.penalty;
+          addVisible.value = true;
+        }
+
+        function resetAddForm() {
+          editingIndex.value = null;
+          addFormRef.value?.resetFields?.();
+        }
+
+        async function deleteItem(item) {
+          if (!isAddedItem(item)) return;
+          try {
+            await ElMessageBox.confirm(
+              `确定删除第 ${item.period} 期（${item.date}）这条新增数据吗？`,
+              '删除确认',
+              { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+            );
+          } catch {
+            return;
+          }
+
+          const raw = list.value
+            .flatMap((d) => d.items || [d])
+            .filter((d) => d.index !== item.index);
+          rebuildList(raw);
+          addedRows.value = addedRows.value.filter((d) => d.index !== item.index);
+          await nextTick();
+          refreshCharts();
+          ElMessage.success('已删除');
+        }
+
+        async function submitAdd() {
+          const formEl = addFormRef.value;
+          if (!formEl) return;
+          try {
+            await formEl.validate();
+          } catch {
+            return;
+          }
+
+          const principal = Number(addForm.principal) || 0;
+          const interest = Number(addForm.interest) || 0;
+          const penalty = Number(addForm.penalty) || 0;
+          const isEdit = editingIndex.value != null;
+          const rate = (!isEdit && addForm.keepRate)
+            ? lastRate()
+            : Number(addForm.rate);
+          if (principal + interest + penalty <= 0) {
+            ElMessage.warning('本金、利息、罚息不能全部为 0');
+            return;
+          }
+          if ((isEdit || !addForm.keepRate) && (Number.isNaN(rate) || rate < 0)) {
+            ElMessage.warning('请输入有效利率');
+            return;
+          }
+
+          adding.value = true;
+          try {
+            const row = {
+              index: isEdit ? editingIndex.value : nextIndex(),
+              period: Number(addForm.period),
+              date: addForm.date,
+              rate,
+              principal,
+              interest,
+              penalty,
+              total: principal + interest + penalty,
+            };
+            const raw = list.value.flatMap((d) => d.items || [d]);
+            if (isEdit) {
+              const pos = raw.findIndex((d) => d.index === editingIndex.value);
+              if (pos >= 0) raw[pos] = row;
+              else raw.push(row);
+              const addedPos = addedRows.value.findIndex((d) => d.index === editingIndex.value);
+              if (addedPos >= 0) addedRows.value[addedPos] = { ...row };
+              else addedRows.value.push({ ...row });
+            } else {
+              raw.push(row);
+              addedRows.value.push({ ...row });
+            }
+            rebuildList(raw);
+            addVisible.value = false;
+            await nextTick();
+            refreshCharts();
+            ElMessage.success(isEdit ? `已保存第 ${row.period} 期修改` : `已添加第 ${row.period} 期数据`);
+          } finally {
+            adding.value = false;
+          }
+        }
+
+        function toRawRows(rows) {
+          return rows
+            .map((d) => {
+              const item = {
+                index: d.index,
+                period: d.period,
+                date: d.date,
+                total: d.total,
+                principal: d.principal,
+                interest: d.interest,
+                penalty: d.penalty,
+              };
+              if (d.rate != null) item.rate = d.rate;
+              return item;
+            })
+            .sort((a, b) => (b.index || 0) - (a.index || 0));
+        }
+
+        function getAllRawRows() {
+          return toRawRows(list.value.flatMap((d) => d.items || [d]));
+        }
+
+        function showJson(title, rows, { wrapArray = true } = {}) {
+          const text = wrapArray
+            ? JSON.stringify(rows, null, 2)
+            : rows.map((r) => JSON.stringify(r, null, 2)).join(',\n');
+          jsonTitle.value = title;
+          jsonText.value = text;
+          jsonVisible.value = true;
+          console.log(title, rows);
+          console.log(text);
+        }
+
+        function printAllData() {
+          showJson('全部数据（可替换 data.json）', getAllRawRows());
+        }
+
+        function printAddedData() {
+          if (!addedRows.value.length) {
+            ElMessage.warning('本次还没有新增数据');
+            return;
+          }
+          showJson('本次新增数据（可追加到 data.json）', toRawRows(addedRows.value), {
+            wrapArray: false,
+          });
+        }
+
+        async function copyJson() {
+          try {
+            await navigator.clipboard.writeText(jsonText.value);
+            ElMessage.success('已复制到剪贴板');
+          } catch {
+            ElMessage.error('复制失败，请手动选中复制');
+          }
+        }
+
         const axisLabel = (data) =>
           data.map((d) => `第${d.period}期`);
 
-        const tooltipMoney = {
-          trigger: 'axis',
-          axisPointer: { type: 'cross' },
-          valueFormatter: (v) => Number(v).toFixed(2),
-        };
+        function disposeCharts() {
+          while (charts.length) {
+            const c = charts.pop();
+            c.dispose();
+          }
+          stackInstance = null;
+        }
+
+        function refreshCharts() {
+          disposeCharts();
+          initCharts();
+        }
+
+        /** 将每期还款合计图缩放到指定年份 */
+        function focusStackToYear(year) {
+          if (!stackInstance) return;
+          const data = list.value;
+          const n = data.length;
+          if (!n) return;
+
+          const yearStr = String(year);
+          const indices = [];
+          data.forEach((d, i) => {
+            if (String(d.date).slice(0, 4) === yearStr) indices.push(i);
+          });
+          if (!indices.length) {
+            ElMessage.warning(`${yearStr} 年没有对应期数`);
+            return;
+          }
+
+          const first = indices[0];
+          const last = indices[indices.length - 1];
+          let start = (first / n) * 100;
+          let end = ((last + 1) / n) * 100;
+          if (end - start < 8) {
+            const mid = (start + end) / 2;
+            start = Math.max(0, mid - 4);
+            end = Math.min(100, mid + 4);
+          }
+
+          stackInstance.dispatchAction({
+            type: 'dataZoom',
+            start,
+            end,
+          });
+          stackChart.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ElMessage.success(`已定位到 ${yearStr} 年（第${data[first].period}–${data[last].period}期）`);
+        }
 
         function initCharts() {
           const data = list.value;
@@ -526,33 +1072,68 @@
             interest: '#c05621',
             penalty: '#9b2c2c',
             total: '#0d7a6f',
+            rate: '#6b46c1',
+          };
+          const rateAxis = {
+            type: 'value',
+            name: '利率%',
+            min: 2.4,
+            max: 3.4,
+            splitNumber: 5,
+            axisLabel: { formatter: '{value}%', color: colors.rate },
+            nameTextStyle: { color: colors.rate },
+            splitLine: { show: false },
+          };
+          const rateSeries = (rates) => ({
+            name: '利率',
+            type: 'line',
+            yAxisIndex: 1,
+            step: 'end',
+            symbol: 'circle',
+            symbolSize: 7,
+            z: 10,
+            lineStyle: { width: 2.2, color: colors.rate },
+            itemStyle: { color: colors.rate },
+            data: rates,
+          });
+          const rateLegend = {
+            top: 0,
+            selected: { 利率: false },
           };
 
           const stack = echarts.init(stackChart.value);
+          stackInstance = stack;
           const periodRows = data.map((d) => ({
             principal: d.principal,
             interest: d.interest,
             penalty: d.penalty,
             total: d.principal + d.interest + d.penalty,
+            rate: rowRate(d),
+            date: d.date,
           }));
           stack.setOption({
-            color: [colors.total],
+            color: [colors.principal, colors.interest, colors.penalty, colors.rate],
             tooltip: {
               trigger: 'axis',
-              axisPointer: { type: 'shadow' },
+              axisPointer: { type: 'cross' },
               formatter(params) {
                 const i = params[0].dataIndex;
                 const row = periodRows[i];
-                return [
-                  `${params[0].axisValue}`,
-                  `本金：${row.principal.toFixed(2)}`,
-                  `利息：${row.interest.toFixed(2)}`,
-                  `罚息：${row.penalty.toFixed(2)}`,
-                  `<b>合计：${row.total.toFixed(2)}</b>`,
-                ].join('<br/>');
+                let html = `${params[0].axisValue}（${row.date}）<br/>`;
+                for (const p of params) {
+                  if (p.seriesName === '利率') {
+                    html += `${p.marker}${p.seriesName}：${fmtRate(p.value)}<br/>`;
+                  } else {
+                    const v = Number(p.value) || 0;
+                    html += `${p.marker}${p.seriesName}：${v.toFixed(2)}<br/>`;
+                  }
+                }
+                html += `<b>合计：${row.total.toFixed(2)}</b>`;
+                return html;
               },
             },
-            grid: { left: 56, right: 24, top: 24, bottom: 56 },
+            legend: { ...rateLegend, data: ['本金', '利息', '罚息', '利率'] },
+            grid: { left: 56, right: 56, top: 40, bottom: 56 },
             dataZoom: [
               { type: 'inside', start: 0, end: 100 },
               { type: 'slider', height: 18, bottom: 8 },
@@ -562,67 +1143,102 @@
               data: labels,
               axisLabel: { rotate: 40, fontSize: 11 },
             },
-            yAxis: {
-              type: 'value',
-              name: '金额',
-              splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
-            },
+            yAxis: [
+              {
+                type: 'value',
+                name: '金额',
+                splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
+              },
+              rateAxis,
+            ],
             series: [
               {
-                name: '合计',
+                name: '本金',
                 type: 'bar',
+                stack: 'total',
+                barMaxWidth: 28,
+                itemStyle: { color: colors.principal },
+                data: periodRows.map((d) => d.principal),
+              },
+              {
+                name: '利息',
+                type: 'bar',
+                stack: 'total',
+                barMaxWidth: 28,
+                itemStyle: { color: colors.interest },
+                data: periodRows.map((d) => d.interest),
+              },
+              {
+                name: '罚息',
+                type: 'bar',
+                stack: 'total',
                 barMaxWidth: 28,
                 itemStyle: {
-                  color: colors.total,
+                  color: colors.penalty,
                   borderRadius: [4, 4, 0, 0],
                 },
-                data: periodRows.map((d) => d.total),
+                data: periodRows.map((d) => d.penalty),
               },
+              rateSeries(periodRows.map((d) => d.rate)),
             ],
           });
           charts.push(stack);
 
           const yearData = groupByYear(
             data.flatMap((d) => d.items || [d])
-          );
+          ).map((d) => ({ ...d, rate: rateByYear(d.year) }));
           const year = echarts.init(yearChart.value);
           year.setOption({
-            color: [colors.principal, colors.interest, colors.penalty],
+            color: [colors.principal, colors.interest, colors.penalty, colors.rate],
             tooltip: {
               trigger: 'axis',
-              axisPointer: { type: 'shadow' },
+              axisPointer: { type: 'cross' },
               formatter(params) {
                 let html = `${params[0].axisValue}年<br/>`;
                 let total = 0;
                 for (const p of params) {
-                  const v = Number(p.value) || 0;
-                  total += v;
-                  html += `${p.marker}${p.seriesName}：${v.toFixed(2)}<br/>`;
+                  if (p.seriesName === '利率') {
+                    html += `${p.marker}${p.seriesName}：${fmtRate(p.value)}<br/>`;
+                  } else {
+                    const v = Number(p.value) || 0;
+                    total += v;
+                    html += `${p.marker}${p.seriesName}：${v.toFixed(2)}<br/>`;
+                  }
                 }
                 const row = yearData[params[0].dataIndex];
                 html += `明细条数：${row.count}<br/>`;
                 html += `<b>合计：${total.toFixed(2)}</b>`;
+                html += '<br/><span style="color:#6b46c1">点击定位到每期还款合计</span>';
                 return html;
               },
             },
-            legend: { top: 0, data: ['本金', '利息', '罚息'] },
-            grid: { left: 64, right: 24, top: 40, bottom: 36 },
+            legend: { ...rateLegend, data: ['本金', '利息', '罚息', '利率'] },
+            grid: { left: 64, right: 56, top: 40, bottom: 36 },
             xAxis: {
               type: 'category',
               data: yearData.map((d) => d.year),
-              axisLabel: { fontSize: 13 },
+              triggerEvent: true,
+              axisLabel: {
+                fontSize: 13,
+                color: '#2b6cb0',
+                fontWeight: 600,
+              },
             },
-            yAxis: {
-              type: 'value',
-              name: '金额',
-              splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
-            },
+            yAxis: [
+              {
+                type: 'value',
+                name: '金额',
+                splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
+              },
+              rateAxis,
+            ],
             series: [
               {
                 name: '本金',
                 type: 'bar',
                 stack: 'year',
                 barMaxWidth: 56,
+                cursor: 'pointer',
                 data: yearData.map((d) => Number(d.principal.toFixed(2))),
               },
               {
@@ -630,6 +1246,7 @@
                 type: 'bar',
                 stack: 'year',
                 barMaxWidth: 56,
+                cursor: 'pointer',
                 data: yearData.map((d) => Number(d.interest.toFixed(2))),
               },
               {
@@ -637,6 +1254,7 @@
                 type: 'bar',
                 stack: 'year',
                 barMaxWidth: 56,
+                cursor: 'pointer',
                 data: yearData.map((d) => Number(d.penalty.toFixed(2))),
                 label: {
                   show: true,
@@ -646,54 +1264,33 @@
                   formatter: (p) => yearData[p.dataIndex].total.toFixed(0),
                 },
               },
+              rateSeries(yearData.map((d) => d.rate)),
             ],
+          });
+          year.on('click', (params) => {
+            let yearStr = null;
+            if (params.componentType === 'series' && params.seriesName !== '利率') {
+              yearStr = yearData[params.dataIndex]?.year;
+            } else if (params.componentType === 'xAxis') {
+              yearStr = params.value;
+            }
+            if (yearStr) focusStackToYear(yearStr);
           });
           charts.push(year);
 
           const line = echarts.init(lineChart.value);
-          line.setOption({
-            color: [colors.total, colors.principal, colors.interest],
-            tooltip: tooltipMoney,
-            legend: { top: 0, data: ['总额', '本金', '利息'] },
-            grid: { left: 56, right: 24, top: 40, bottom: 48 },
-            dataZoom: [{ type: 'inside', start: 0, end: 100 }],
-            xAxis: {
-              type: 'category',
-              data: labels,
-              boundaryGap: false,
-              axisLabel: { rotate: 40, fontSize: 11 },
-            },
-            yAxis: {
-              type: 'value',
-              splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
-            },
-            series: [
-              {
-                name: '总额',
-                type: 'line',
-                smooth: true,
-                symbol: 'none',
-                lineStyle: { width: 2.5 },
-                data: data.map((d) => d.total),
-              },
-              {
-                name: '本金',
-                type: 'line',
-                smooth: true,
-                symbol: 'none',
-                lineStyle: { width: 1.5 },
-                data: data.map((d) => d.principal),
-              },
-              {
-                name: '利息',
-                type: 'line',
-                smooth: true,
-                symbol: 'none',
-                lineStyle: { width: 1.5 },
-                data: data.map((d) => d.interest),
-              },
-            ],
-          });
+          line.setOption(
+            GjjCharts.buildLineChartOption({
+              data,
+              labels,
+              colors,
+              rateAxis,
+              rateSeries,
+              rateLegend,
+              fmtRate,
+              getRate: rowRate,
+            })
+          );
           charts.push(line);
 
           const pie = echarts.init(pieChart.value);
@@ -746,7 +1343,7 @@
 
         onBeforeUnmount(() => {
           window.removeEventListener('resize', onResize);
-          charts.forEach((c) => c.dispose());
+          disposeCharts();
         });
 
         return {
@@ -755,16 +1352,52 @@
           ready,
           error,
           sum,
+          loanPrincipal,
+          remainPrincipal,
+          loanProgress,
+          paidStats,
+          forecast,
+          scheduleVisible,
+          scheduleRows,
+          openScheduleDialog,
           fmt,
-          expanded,
-          toggle,
+          fmtRate,
+          rateByDate,
+          rowRate,
+          tableRowClass,
           stackChart,
           yearChart,
           lineChart,
           pieChart,
+          addVisible,
+          adding,
+          addFormRef,
+          addForm,
+          addRules,
+          addFormTotal,
+          editingIndex,
+          lastRatePreview,
+          onKeepRateChange,
+          isAddedItem,
+          hasAddedInPeriod,
+          isAddedPeriod,
+          openAddDialog,
+          openEditDialog,
+          deleteItem,
+          resetAddForm,
+          submitAdd,
+          printAllData,
+          printAddedData,
+          jsonVisible,
+          jsonTitle,
+          jsonText,
+          copyJson,
         };
       },
-    }).mount('#app');
+    });
+
+    app.use(ElementPlus, { locale: ElementPlusLocaleZhCn });
+    app.mount('#app');
   </script>
 </body>
 </html>
