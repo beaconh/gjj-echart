@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>还款明细图表</title>
+  <script src="./utils/vue@v3.5.40.min.js"></script>
+  <script src="./utils/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --bg-deep: #dce6f0;
+      --surface: #ffffff;
+      --text: #1a2332;
+      --muted: #5a6a7e;
+      --accent: #0d7a6f;
+      --principal: #2b6cb0;
+      --interest: #c05621;
+      --penalty: #9b2c2c;
+      --total: #0d7a6f;
+      --border: #c8d4e0;
+      --shadow: 0 8px 28px rgba(26, 35, 50, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #c5ebe4 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 0%, #c9daf0 0%, transparent 50%),
+        linear-gradient(165deg, var(--bg) 0%, var(--bg-deep) 100%);
+    }
+
+    #app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    header {
+      margin-bottom: 28px;
+    }
+
+    header h1 {
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    header p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stat .value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat.principal .value { color: var(--principal); }
+    .stat.interest .value { color: var(--interest); }
+    .stat.penalty .value { color: var(--penalty); }
+    .stat.total .value { color: var(--total); }
+
+    .charts {
+      display: grid;
+      gap: 18px;
+    }
+
+    .chart-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 16px 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .chart-panel h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 4px 8px 12px;
+      color: var(--text);
+    }
+
+    .chart {
+      width: 100%;
+      height: 380px;
+    }
+
+    .chart.short {
+      height: 320px;
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 18px;
+    }
+
+    .loading, .error {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .error { color: var(--penalty); }
+
+    .list-panel {
+      margin-top: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .list-panel h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .list-panel .hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 600px;
+      height: 600px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    table.period-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    table.period-table th,
+    table.period-table td {
+      padding: 10px 12px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    table.period-table th:first-child,
+    table.period-table td:first-child,
+    table.period-table th:nth-child(2),
+    table.period-table td:nth-child(2),
+    table.period-table th:nth-child(3),
+    table.period-table td:nth-child(3) {
+      text-align: left;
+    }
+
+    table.period-table thead th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      background: #f5f8fb;
+      position: sticky;
+      top: 0;
+    }
+
+    table.period-table tbody tr.summary {
+      cursor: default;
+    }
+
+    table.period-table tbody tr.summary.merged {
+      cursor: pointer;
+      background: #f0faf8;
+    }
+
+    table.period-table tbody tr.summary.merged:hover {
+      background: #e4f5f1;
+    }
+
+    table.period-table tbody tr.summary.merged.open {
+      background: #d8f0ea;
+    }
+
+    table.period-table tbody tr.detail {
+      background: #fafbfc;
+    }
+
+    table.period-table tbody tr.detail td {
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding-top: 7px;
+      padding-bottom: 7px;
+      border-bottom: 1px dashed #dce4ee;
+    }
+
+    table.period-table tbody tr.detail td:first-child {
+      padding-left: 28px;
+    }
+
+    .period-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .toggle.placeholder {
+      visibility: hidden;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #d8f0ea;
+      color: var(--accent);
+    }
+
+    .badge.single {
+      background: #eef2f6;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .detail-tag {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .num-total { color: var(--total); font-weight: 600; }
+    .num-principal { color: var(--principal); }
+    .num-interest { color: var(--interest); }
+    .num-penalty { color: var(--penalty); }
+
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .row-2 { grid-template-columns: 1fr; }
+      .chart { height: 300px; }
+    }
+
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div v-if="error" class="error">{{ error }}</div>
+    <div v-else-if="!ready" class="loading">正在加载数据…</div>
+    <template v-else>
+      <header>
+        <h1>还款明细图表</h1>
+        <p>共 {{ list.length }} 期 · {{ list[0].date }} 至 {{ list[list.length - 1].date }}</p>
+      </header>
+
+      <section class="stats">
+        <div class="stat total">
+          <div class="label">累计还款</div>
+          <div class="value">{{ fmt(sum.total) }}</div>
+        </div>
+        <div class="stat principal">
+          <div class="label">累计本金</div>
+          <div class="value">{{ fmt(sum.principal) }}</div>
+        </div>
+        <div class="stat interest">
+          <div class="label">累计利息</div>
+          <div class="value">{{ fmt(sum.interest) }}</div>
+        </div>
+        <div class="stat penalty">
+          <div class="label">累计罚息</div>
+          <div class="value">{{ fmt(sum.penalty) }}</div>
+        </div>
+      </section>
+
+      <section class="charts">
+        <div class="chart-panel">
+          <h2>每期还款合计（本金 + 利息 + 罚息）</h2>
+          <div ref="stackChart" class="chart"></div>
+        </div>
+
+        <div class="chart-panel">
+          <h2>按年汇总（本金 / 利息 / 罚息）</h2>
+          <div ref="yearChart" class="chart short"></div>
+        </div>
+
+        <div class="row-2">
+          <div class="chart-panel">
+            <h2>每期还款总额走势</h2>
+            <div ref="lineChart" class="chart short"></div>
+          </div>
+          <div class="chart-panel">
+            <h2>累计金额占比</h2>
+            <div ref="pieChart" class="chart short"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="list-panel">
+        <h2>还款明细列表</h2>
+        <p class="hint">
+          同一期多条已合并显示合计；带「N条合计」标记的可点击展开查看原始明细。
+        </p>
+        <div class="table-wrap">
+          <table class="period-table">
+            <thead>
+              <tr>
+                <th>期数</th>
+                <th>合并</th>
+                <th>日期</th>
+                <th>本金</th>
+                <th>利息</th>
+                <th>罚息</th>
+                <th>合计</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="row in tableList" :key="row.period">
+                <tr
+                  class="summary"
+                  :class="{ merged: row.count > 1, open: expanded[row.period] }"
+                  @click="row.count > 1 && toggle(row.period)"
+                >
+                  <td>
+                    <div class="period-cell">
+                      <span
+                        class="toggle"
+                        :class="{ placeholder: row.count <= 1 }"
+                      >{{ expanded[row.period] ? '−' : '+' }}</span>
+                      第{{ row.period }}期
+                    </div>
+                  </td>
+                  <td>
+                    <span
+                      class="badge"
+                      :class="{ single: row.count <= 1 }"
+                    >{{ row.count > 1 ? row.count + '条合计' : '单条' }}</span>
+                  </td>
+                  <td>{{ row.date }}</td>
+                  <td class="num-principal">{{ fmt(row.principal) }}</td>
+                  <td class="num-interest">{{ fmt(row.interest) }}</td>
+                  <td class="num-penalty">{{ fmt(row.penalty) }}</td>
+                  <td class="num-total">{{ fmt(row.total) }}</td>
+                </tr>
+                <tr
+                  v-for="(item, idx) in (expanded[row.period] ? row.items : [])"
+                  :key="row.period + '-' + idx"
+                  class="detail"
+                >
+                  <td>
+                    <span class="detail-tag">明细 {{ idx + 1 }}/{{ row.count }}</span>
+                  </td>
+                  <td></td>
+                  <td>{{ item.date }}</td>
+                  <td>{{ fmt(item.principal) }}</td>
+                  <td>{{ fmt(item.interest) }}</td>
+                  <td>{{ fmt(item.penalty) }}</td>
+                  <td>{{ fmt(item.total) }}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </template>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, nextTick, onBeforeUnmount } = Vue;
+
+    createApp({
+      setup() {
+        const list = ref([]);
+        const ready = ref(false);
+        const error = ref('');
+        const expanded = ref({});
+        const stackChart = ref(null);
+        const yearChart = ref(null);
+        const lineChart = ref(null);
+        const pieChart = ref(null);
+
+        const charts = [];
+
+        /** 同一期多条记录合并为一条（本金/利息/罚息/总额相加），并保留明细 */
+        function mergeByPeriod(rows) {
+          const map = new Map();
+          for (const row of rows) {
+            const key = row.period;
+            if (!map.has(key)) {
+              map.set(key, {
+                period: row.period,
+                date: row.date,
+                total: 0,
+                principal: 0,
+                interest: 0,
+                penalty: 0,
+                count: 0,
+                items: [],
+              });
+            }
+            const item = map.get(key);
+            item.total += row.total;
+            item.principal += row.principal;
+            item.interest += row.interest;
+            item.penalty += row.penalty;
+            item.count += 1;
+            item.items.push({ ...row });
+            if (row.date > item.date) item.date = row.date;
+          }
+          return Array.from(map.values()).sort((a, b) => a.period - b.period);
+        }
+
+        /** 按还款日期年份汇总 */
+        function groupByYear(rows) {
+          const map = new Map();
+          for (const row of rows) {
+            const year = String(row.date).slice(0, 4);
+            if (!map.has(year)) {
+              map.set(year, {
+                year,
+                total: 0,
+                principal: 0,
+                interest: 0,
+                penalty: 0,
+                count: 0,
+              });
+            }
+            const item = map.get(year);
+            item.total += row.total;
+            item.principal += row.principal;
+            item.interest += row.interest;
+            item.penalty += row.penalty;
+            item.count += 1;
+          }
+          return Array.from(map.values()).sort((a, b) => a.year.localeCompare(b.year));
+        }
+
+        function toggle(period) {
+          expanded.value = {
+            ...expanded.value,
+            [period]: !expanded.value[period],
+          };
+        }
+
+        const sum = computed(() => {
+          const s = { total: 0, principal: 0, interest: 0, penalty: 0 };
+          for (const row of list.value) {
+            s.total += row.total;
+            s.principal += row.principal;
+            s.interest += row.interest;
+            s.penalty += row.penalty;
+          }
+          return s;
+        });
+
+        /** 列表倒序：期数从大到小 */
+        const tableList = computed(() =>
+          [...list.value].sort((a, b) => b.period - a.period)
+        );
+
+        const fmt = (n) =>
+          n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const axisLabel = (data) =>
+          data.map((d) => `第${d.period}期`);
+
+        const tooltipMoney = {
+          trigger: 'axis',
+          axisPointer: { type: 'cross' },
+          valueFormatter: (v) => Number(v).toFixed(2),
+        };
+
+        function initCharts() {
+          const data = list.value;
+          const labels = axisLabel(data);
+          const colors = {
+            principal: '#2b6cb0',
+            interest: '#c05621',
+            penalty: '#9b2c2c',
+            total: '#0d7a6f',
+          };
+
+          const stack = echarts.init(stackChart.value);
+          const periodRows = data.map((d) => ({
+            principal: d.principal,
+            interest: d.interest,
+            penalty: d.penalty,
+            total: d.principal + d.interest + d.penalty,
+          }));
+          stack.setOption({
+            color: [colors.total],
+            tooltip: {
+              trigger: 'axis',
+              axisPointer: { type: 'shadow' },
+              formatter(params) {
+                const i = params[0].dataIndex;
+                const row = periodRows[i];
+                return [
+                  `${params[0].axisValue}`,
+                  `本金：${row.principal.toFixed(2)}`,
+                  `利息：${row.interest.toFixed(2)}`,
+                  `罚息：${row.penalty.toFixed(2)}`,
+                  `<b>合计：${row.total.toFixed(2)}</b>`,
+                ].join('<br/>');
+              },
+            },
+            grid: { left: 56, right: 24, top: 24, bottom: 56 },
+            dataZoom: [
+              { type: 'inside', start: 0, end: 100 },
+              { type: 'slider', height: 18, bottom: 8 },
+            ],
+            xAxis: {
+              type: 'category',
+              data: labels,
+              axisLabel: { rotate: 40, fontSize: 11 },
+            },
+            yAxis: {
+              type: 'value',
+              name: '金额',
+              splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
+            },
+            series: [
+              {
+                name: '合计',
+                type: 'bar',
+                barMaxWidth: 28,
+                itemStyle: {
+                  color: colors.total,
+                  borderRadius: [4, 4, 0, 0],
+                },
+                data: periodRows.map((d) => d.total),
+              },
+            ],
+          });
+          charts.push(stack);
+
+          const yearData = groupByYear(
+            data.flatMap((d) => d.items || [d])
+          );
+          const year = echarts.init(yearChart.value);
+          year.setOption({
+            color: [colors.principal, colors.interest, colors.penalty],
+            tooltip: {
+              trigger: 'axis',
+              axisPointer: { type: 'shadow' },
+              formatter(params) {
+                let html = `${params[0].axisValue}年<br/>`;
+                let total = 0;
+                for (const p of params) {
+                  const v = Number(p.value) || 0;
+                  total += v;
+                  html += `${p.marker}${p.seriesName}：${v.toFixed(2)}<br/>`;
+                }
+                const row = yearData[params[0].dataIndex];
+                html += `明细条数：${row.count}<br/>`;
+                html += `<b>合计：${total.toFixed(2)}</b>`;
+                return html;
+              },
+            },
+            legend: { top: 0, data: ['本金', '利息', '罚息'] },
+            grid: { left: 64, right: 24, top: 40, bottom: 36 },
+            xAxis: {
+              type: 'category',
+              data: yearData.map((d) => d.year),
+              axisLabel: { fontSize: 13 },
+            },
+            yAxis: {
+              type: 'value',
+              name: '金额',
+              splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
+            },
+            series: [
+              {
+                name: '本金',
+                type: 'bar',
+                stack: 'year',
+                barMaxWidth: 56,
+                data: yearData.map((d) => Number(d.principal.toFixed(2))),
+              },
+              {
+                name: '利息',
+                type: 'bar',
+                stack: 'year',
+                barMaxWidth: 56,
+                data: yearData.map((d) => Number(d.interest.toFixed(2))),
+              },
+              {
+                name: '罚息',
+                type: 'bar',
+                stack: 'year',
+                barMaxWidth: 56,
+                data: yearData.map((d) => Number(d.penalty.toFixed(2))),
+                label: {
+                  show: true,
+                  position: 'top',
+                  color: '#5a6a7e',
+                  fontSize: 11,
+                  formatter: (p) => yearData[p.dataIndex].total.toFixed(0),
+                },
+              },
+            ],
+          });
+          charts.push(year);
+
+          const line = echarts.init(lineChart.value);
+          line.setOption({
+            color: [colors.total, colors.principal, colors.interest],
+            tooltip: tooltipMoney,
+            legend: { top: 0, data: ['总额', '本金', '利息'] },
+            grid: { left: 56, right: 24, top: 40, bottom: 48 },
+            dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+            xAxis: {
+              type: 'category',
+              data: labels,
+              boundaryGap: false,
+              axisLabel: { rotate: 40, fontSize: 11 },
+            },
+            yAxis: {
+              type: 'value',
+              splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
+            },
+            series: [
+              {
+                name: '总额',
+                type: 'line',
+                smooth: true,
+                symbol: 'none',
+                lineStyle: { width: 2.5 },
+                data: data.map((d) => d.total),
+              },
+              {
+                name: '本金',
+                type: 'line',
+                smooth: true,
+                symbol: 'none',
+                lineStyle: { width: 1.5 },
+                data: data.map((d) => d.principal),
+              },
+              {
+                name: '利息',
+                type: 'line',
+                smooth: true,
+                symbol: 'none',
+                lineStyle: { width: 1.5 },
+                data: data.map((d) => d.interest),
+              },
+            ],
+          });
+          charts.push(line);
+
+          const pie = echarts.init(pieChart.value);
+          const s = sum.value;
+          pie.setOption({
+            color: [colors.principal, colors.interest, colors.penalty],
+            tooltip: {
+              trigger: 'item',
+              formatter: ({ name, value, percent }) =>
+                `${name}<br/>${value.toFixed(2)}（${percent}%）`,
+            },
+            legend: { bottom: 0 },
+            series: [
+              {
+                type: 'pie',
+                radius: ['42%', '68%'],
+                center: ['50%', '46%'],
+                avoidLabelOverlap: true,
+                itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+                label: { formatter: '{b}\n{d}%' },
+                data: [
+                  { name: '本金', value: s.principal },
+                  { name: '利息', value: s.interest },
+                  { name: '罚息', value: s.penalty },
+                ].filter((d) => d.value > 0),
+              },
+            ],
+          });
+          charts.push(pie);
+        }
+
+        function onResize() {
+          charts.forEach((c) => c.resize());
+        }
+
+        onMounted(async () => {
+          try {
+            const res = await fetch('./assets/data.json');
+            if (!res.ok) throw new Error('无法加载 data.json');
+            const raw = await res.json();
+            list.value = mergeByPeriod(raw);
+            ready.value = true;
+            await nextTick();
+            initCharts();
+            window.addEventListener('resize', onResize);
+          } catch (e) {
+            error.value = e.message || '数据加载失败';
+          }
+        });
+
+        onBeforeUnmount(() => {
+          window.removeEventListener('resize', onResize);
+          charts.forEach((c) => c.dispose());
+        });
+
+        return {
+          list,
+          tableList,
+          ready,
+          error,
+          sum,
+          fmt,
+          expanded,
+          toggle,
+          stackChart,
+          yearChart,
+          lineChart,
+          pieChart,
+        };
+      },
+    }).mount('#app');
+  </script>
+</body>
+</html>
