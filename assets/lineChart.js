@@ -12,6 +12,9 @@
     rateLegend,
     fmtRate,
     getRate,
+    grid,
+    axisFont,
+    confine,
   }) {
     const lineRates = data.map((d) => getRate(d));
 
@@ -20,6 +23,7 @@
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
+        confine: !!confine,
         formatter(params) {
           const i = params[0].dataIndex;
           let html = `${params[0].axisValue}（${data[i].date}）<br/>`;
@@ -34,17 +38,18 @@
         },
       },
       legend: { ...rateLegend, data: ['总额', '本金', '利息', '利率'] },
-      grid: { left: 56, right: 56, top: 40, bottom: 48 },
+      grid: grid || { left: 56, right: 56, top: 40, bottom: 48 },
       dataZoom: [{ type: 'inside', start: 0, end: 100 }],
       xAxis: {
         type: 'category',
         data: labels,
         boundaryGap: false,
-        axisLabel: { rotate: 40, fontSize: 11 },
+        axisLabel: { rotate: 40, fontSize: axisFont || 11 },
       },
       yAxis: [
         {
           type: 'value',
+          axisLabel: { fontSize: axisFont || 11 },
           splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
         },
         rateAxis,

@@ -11,14 +11,25 @@
   <script src="./utils/elementplus-zh-cn@2.14.3.js"></script>
   <script src="./utils/echarts.min.js"></script>
   <script src="./assets/lineChart.js"></script>
+  <script src="./assets/config.js"></script>
+  <script src="./assets/jsonbin.js"></script>
+  <script src="./assets/supabase.js"></script>
 </head>
 <body>
   <div id="app">
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="error" class="error">
+      <p>{{ error }}</p>
+      <p v-if="configHint" class="error-hint">{{ configHint }}</p>
+    </div>
     <div v-else-if="!ready" class="loading">正在加载数据…</div>
     <template v-else>
       <header>
-        <h1>还款明细图表</h1>
+        <div class="header-row">
+          <h1>还款明细图表</h1>
+          <span class="data-source" :class="useCloud ? 'cloud' : 'local'">
+            {{ cloudLabel }}
+          </span>
+        </div>
         <p>共 {{ list.length }} 期 · {{ list[0].date }} 至 {{ list[list.length - 1].date }}</p>
       </header>
 
@@ -118,18 +129,27 @@
 
       <section class="charts">
         <div class="chart-panel">
-          <h2>每期还款合计（本金 + 利息 + 罚息）· 叠加利率</h2>
+          <h2>
+            <span class="title-full">每期还款合计（本金 + 利息 + 罚息）· 叠加利率</span>
+            <span class="title-short">每期还款合计</span>
+          </h2>
           <div ref="stackChart" class="chart"></div>
         </div>
 
         <div class="chart-panel">
-          <h2>按年汇总（本金 / 利息 / 罚息）· 点击年份可定位到上图</h2>
+          <h2>
+            <span class="title-full">按年汇总（本金 / 利息 / 罚息）· 点击年份可定位到上图</span>
+            <span class="title-short">按年汇总 · 点击定位</span>
+          </h2>
           <div ref="yearChart" class="chart short"></div>
         </div>
 
         <div class="row-2">
           <div class="chart-panel">
-            <h2>每期还款总额走势 · 叠加利率</h2>
+            <h2>
+              <span class="title-full">每期还款总额走势 · 叠加利率</span>
+              <span class="title-short">还款总额走势</span>
+            </h2>
             <div ref="lineChart" class="chart short"></div>
           </div>
           <div class="chart-panel">
@@ -144,17 +164,28 @@
           <h2>还款明细列表</h2>
           <div class="list-actions">
             <el-button type="primary" @click="openAddDialog">添加数据</el-button>
-            <el-button @click="printAllData">打印全部数据</el-button>
-            <el-button @click="printAddedData">打印新增数据</el-button>
+            <el-button v-if="useCloud" :loading="saving" @click="saveToCloud">保存到云端</el-button>
+            <el-button @click="printAllData">导出全部 JSON</el-button>
+            <el-button v-if="!useCloud" @click="printAddedData">导出新增 JSON</el-button>
           </div>
         </div>
         <p class="hint">
-          同一期多条已合并显示合计；带「N条合计」标记的可展开查看明细。本次新增的数据支持编辑和删除。
+          <template v-if="cloudProvider === 'supabase'">
+            数据存于 Supabase；增删改按条同步。也可点「保存到云端」整表覆盖。
+          </template>
+          <template v-else-if="cloudProvider === 'jsonbin'">
+            数据存于 JSONBin；增删改后会自动同步。也可点「保存到云端」手动再存一次。
+          </template>
+          <template v-else>
+            同一期多条已合并显示合计；带「N条合计」标记的可展开查看明细。本次新增的数据支持编辑和删除。配置 Supabase 后可云端持久化（见 README）。
+          </template>
         </p>
-        <div class="table-wrap">
+
+        <!-- 桌面端表格：可视宽度 >= 640 -->
+        <div v-if="!isMobile" class="table-wrap">
           <el-table
             :data="tableList"
-            height="600"
+            :height="tableHeight"
             row-key="period"
             :row-class-name="tableRowClass"
             stripe
@@ -189,7 +220,7 @@
                     </el-table-column>
                     <el-table-column label="操作" width="130" fixed="right">
                       <template #default="{ row: item }">
-                        <template v-if="isAddedItem(item)">
+                        <template v-if="canEditItem(item)">
                           <el-button link type="primary" @click="openEditDialog(item)">编辑</el-button>
                           <el-button link type="danger" @click="deleteItem(item)">删除</el-button>
                         </template>
@@ -241,22 +272,119 @@
             </el-table-column>
             <el-table-column label="操作" width="140" fixed="right">
               <template #default="{ row }">
-                <template v-if="row.count === 1 && isAddedItem(row.items[0])">
+                <template v-if="row.count === 1 && canEditItem(row.items[0])">
                   <el-button link type="primary" @click="openEditDialog(row.items[0])">编辑</el-button>
                   <el-button link type="danger" @click="deleteItem(row.items[0])">删除</el-button>
                 </template>
-                <span v-else-if="hasAddedInPeriod(row)" class="op-muted">展开后编辑</span>
+                <span v-else-if="row.count > 1 && hasEditableInPeriod(row)" class="op-muted">展开后编辑</span>
                 <span v-else class="op-muted">—</span>
               </template>
             </el-table-column>
           </el-table>
+        </div>
+
+        <!-- 移动端卡片：可视宽度 < 640 -->
+        <div v-else class="mobile-list">
+          <article
+            v-for="row in tableList"
+            :key="row.period"
+            class="period-card"
+            :class="{ merged: row.count > 1, added: isAddedPeriod(row) }"
+          >
+            <div class="period-card-head">
+              <div class="period-card-title">
+                <strong>第{{ row.period }}期</strong>
+                <span class="badge" :class="{ single: row.count <= 1 }">
+                  {{ row.count > 1 ? row.count + '条合计' : '单条' }}
+                </span>
+                <span v-if="isAddedPeriod(row)" class="badge added">新增</span>
+              </div>
+              <div class="period-card-meta">
+                <span>{{ row.date }}</span>
+                <span class="num-rate">{{ fmtRate(rowRate(row)) }}</span>
+              </div>
+            </div>
+
+            <div class="period-card-amounts">
+              <div class="amt">
+                <span class="k">本金</span>
+                <span class="v num-principal">{{ fmt(row.principal) }}</span>
+              </div>
+              <div class="amt">
+                <span class="k">利息</span>
+                <span class="v num-interest">{{ fmt(row.interest) }}</span>
+              </div>
+              <div class="amt">
+                <span class="k">罚息</span>
+                <span class="v num-penalty">{{ fmt(row.penalty) }}</span>
+              </div>
+              <div class="amt total">
+                <span class="k">合计</span>
+                <span class="v num-total">{{ fmt(row.total) }}</span>
+              </div>
+            </div>
+
+            <div
+              v-if="(row.count === 1 && canEditItem(row.items[0])) || row.count > 1"
+              class="period-card-actions"
+            >
+              <template v-if="row.count === 1 && canEditItem(row.items[0])">
+                <el-button size="small" type="primary" plain @click="openEditDialog(row.items[0])">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="deleteItem(row.items[0])">删除</el-button>
+              </template>
+              <button
+                v-if="row.count > 1"
+                type="button"
+                class="expand-btn"
+                @click="toggleMobileExpand(row.period)"
+              >
+                {{ isMobileExpanded(row.period) ? '收起明细' : '展开 ' + row.count + ' 条明细' }}
+              </button>
+            </div>
+
+            <div v-if="row.count > 1 && isMobileExpanded(row.period)" class="period-card-details">
+              <div
+                v-for="(item, idx) in row.items"
+                :key="idx"
+                class="detail-card"
+              >
+                <div class="detail-card-head">
+                  <span>明细 {{ idx + 1 }}/{{ row.count }}</span>
+                  <span>{{ item.date }}</span>
+                  <span class="num-rate">{{ fmtRate(rowRate(item)) }}</span>
+                </div>
+                <div class="period-card-amounts compact">
+                  <div class="amt">
+                    <span class="k">本金</span>
+                    <span class="v num-principal">{{ fmt(item.principal) }}</span>
+                  </div>
+                  <div class="amt">
+                    <span class="k">利息</span>
+                    <span class="v num-interest">{{ fmt(item.interest) }}</span>
+                  </div>
+                  <div class="amt">
+                    <span class="k">罚息</span>
+                    <span class="v num-penalty">{{ fmt(item.penalty) }}</span>
+                  </div>
+                  <div class="amt total">
+                    <span class="k">合计</span>
+                    <span class="v num-total">{{ fmt(item.total) }}</span>
+                  </div>
+                </div>
+                <div v-if="canEditItem(item)" class="period-card-actions">
+                  <el-button size="small" type="primary" plain @click="openEditDialog(item)">编辑</el-button>
+                  <el-button size="small" type="danger" plain @click="deleteItem(item)">删除</el-button>
+                </div>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
 
       <el-dialog
         v-model="addVisible"
         :title="editingIndex == null ? '添加数据' : '编辑数据'"
-        width="480px"
+        :width="dialogWidth"
         destroy-on-close
         @closed="resetAddForm"
       >
@@ -265,7 +393,8 @@
           class="add-form"
           :model="addForm"
           :rules="addRules"
-          label-width="88px"
+          :label-width="isMobile ? 'auto' : '88px'"
+          :label-position="isMobile ? 'top' : 'right'"
         >
           <el-form-item label="期数" prop="period">
             <el-input-number
@@ -349,7 +478,7 @@
       <el-dialog
         v-model="scheduleVisible"
         title="待还款明细"
-        width="860px"
+        :width="scheduleDialogWidth"
         destroy-on-close
       >
         <div class="schedule-summary">
@@ -359,7 +488,8 @@
           <span>预计利息 <strong>{{ fmt(forecast.interest) }}</strong></span>
           <span>预计合计 <strong>{{ fmt(forecast.total) }}</strong></span>
         </div>
-        <el-table :data="scheduleRows" height="480" stripe border size="small">
+        <div class="schedule-table-wrap">
+        <el-table :data="scheduleRows" :height="scheduleTableHeight" stripe border size="small">
           <el-table-column prop="seq" label="序" width="64" align="center"></el-table-column>
           <el-table-column prop="period" label="期数" width="88">
             <template #default="{ row }">第{{ row.period }}期</template>
@@ -387,6 +517,7 @@
             <template #default="{ row }">{{ fmt(row.balance) }}</template>
           </el-table-column>
         </el-table>
+        </div>
         <template #footer>
           <el-button @click="scheduleVisible = false">关闭</el-button>
         </template>
@@ -395,7 +526,7 @@
       <el-dialog
         v-model="jsonVisible"
         :title="jsonTitle"
-        width="720px"
+        :width="jsonDialogWidth"
         destroy-on-close
       >
         <div class="json-toolbar">
@@ -573,6 +704,15 @@
         const list = ref([]);
         const ready = ref(false);
         const error = ref('');
+        const configHint = ref('');
+        const cloudProvider = ref(''); // 'supabase' | 'jsonbin' | ''
+        const useCloud = computed(() => !!cloudProvider.value);
+        const cloudLabel = computed(() => {
+          if (cloudProvider.value === 'supabase') return 'Supabase 云端';
+          if (cloudProvider.value === 'jsonbin') return 'JSONBin 云端';
+          return '本地 data.json';
+        });
+        const saving = ref(false);
         const stackChart = ref(null);
         const yearChart = ref(null);
         const lineChart = ref(null);
@@ -588,6 +728,39 @@
         const jsonVisible = ref(false);
         const jsonTitle = ref('');
         const jsonText = ref('');
+        const viewportWidth = ref(
+          typeof window !== 'undefined' ? window.innerWidth : 1200
+        );
+        const isMobile = computed(() => viewportWidth.value < 640);
+        const dialogWidth = computed(() => (isMobile.value ? '100%' : '480px'));
+        const scheduleDialogWidth = computed(() =>
+          isMobile.value ? '100%' : '860px'
+        );
+        const jsonDialogWidth = computed(() =>
+          isMobile.value ? '100%' : '720px'
+        );
+        const tableHeight = computed(() =>
+          viewportWidth.value < 640
+            ? Math.min(520, Math.max(360, window.innerHeight * 0.55))
+            : 600
+        );
+        const scheduleTableHeight = computed(() =>
+          viewportWidth.value < 640
+            ? Math.min(420, Math.max(280, window.innerHeight * 0.5))
+            : 480
+        );
+        const expandedMobilePeriods = ref(new Set());
+
+        function isMobileExpanded(period) {
+          return expandedMobilePeriods.value.has(period);
+        }
+
+        function toggleMobileExpand(period) {
+          const next = new Set(expandedMobilePeriods.value);
+          if (next.has(period)) next.delete(period);
+          else next.add(period);
+          expandedMobilePeriods.value = next;
+        }
         const addForm = reactive({
           period: 1,
           date: '',
@@ -609,10 +782,66 @@
         const charts = [];
         let stackInstance = null;
 
+        function syncViewport() {
+          viewportWidth.value = window.innerWidth;
+        }
+
+        function chartLayout() {
+          const narrow = window.innerWidth < 640;
+          return {
+            narrow,
+            grid: narrow
+              ? { left: 40, right: 36, top: 48, bottom: 52 }
+              : { left: 56, right: 56, top: 40, bottom: 56 },
+            yearGrid: narrow
+              ? { left: 44, right: 36, top: 48, bottom: 28 }
+              : { left: 64, right: 56, top: 40, bottom: 36 },
+            lineGrid: narrow
+              ? { left: 40, right: 36, top: 48, bottom: 44 }
+              : { left: 56, right: 56, top: 40, bottom: 48 },
+            legend: narrow
+              ? { top: 0, left: 0, right: 0, itemWidth: 12, itemHeight: 8, textStyle: { fontSize: 11 } }
+              : { top: 0 },
+            axisFont: narrow ? 10 : 11,
+            barMax: narrow ? 18 : 28,
+            yearBarMax: narrow ? 36 : 56,
+            sliderHeight: narrow ? 14 : 18,
+            pieRadius: narrow ? ['38%', '62%'] : ['42%', '68%'],
+            pieLabel: narrow
+              ? { formatter: '{b}\n{d}%', fontSize: 11 }
+              : { formatter: '{b}\n{d}%' },
+          };
+        }
+
+        /** 兼容旧字段 index/date 与新字段 row_index/pay_date；rate 可为 null */
+        function normalizeRow(row) {
+          if (!row || typeof row !== 'object') return null;
+          const index = row.index != null ? row.index : row.row_index;
+          const date = row.date != null ? row.date : row.pay_date;
+          if (index == null || date == null || row.period == null) return null;
+          const item = {
+            index: Number(index),
+            period: Number(row.period),
+            date: String(date),
+            total: Number(row.total) || 0,
+            principal: Number(row.principal) || 0,
+            interest: Number(row.interest) || 0,
+            penalty: Number(row.penalty) || 0,
+          };
+          if (row.rate != null && row.rate !== '') item.rate = Number(row.rate);
+          return item;
+        }
+
+        function normalizeRows(rows) {
+          return (Array.isArray(rows) ? rows : [])
+            .map(normalizeRow)
+            .filter(Boolean);
+        }
+
         /** 同一期多条记录合并为一条（本金/利息/罚息/总额相加），并保留明细 */
         function mergeByPeriod(rows) {
           const map = new Map();
-          for (const row of rows) {
+          for (const row of normalizeRows(rows)) {
             const key = row.period;
             if (!map.has(key)) {
               map.set(key, {
@@ -819,7 +1048,7 @@
         const lastRatePreview = computed(() => lastRate());
 
         function rowRate(row) {
-          if (row && row.rate != null) return Number(row.rate);
+          if (row && row.rate != null && row.rate !== '') return Number(row.rate);
           return rateByDate(row?.date);
         }
 
@@ -833,17 +1062,59 @@
           return !!item && addedRows.value.some((r) => r.index === item.index);
         }
 
+        /** 云端模式下全部可改；本地模式仅本次新增可改 */
+        function canEditItem(item) {
+          if (useCloud.value) return !!item;
+          return isAddedItem(item);
+        }
+
         function hasAddedInPeriod(row) {
           return (row.items || []).some((item) => isAddedItem(item));
         }
 
+        function hasEditableInPeriod(row) {
+          return (row.items || []).some((item) => canEditItem(item));
+        }
+
         function isAddedPeriod(row) {
+          if (useCloud.value) return false;
           const items = row.items || [];
           return items.length > 0 && items.every((item) => isAddedItem(item));
         }
 
         function rebuildList(raw) {
           list.value = mergeByPeriod(raw);
+        }
+
+        async function persistCloud(action, payload) {
+          if (!useCloud.value) return;
+          saving.value = true;
+          try {
+            if (cloudProvider.value === 'supabase' && window.GjjSupabase) {
+              if (action === 'insert') await window.GjjSupabase.insert(payload);
+              else if (action === 'update') await window.GjjSupabase.update(payload);
+              else if (action === 'delete') await window.GjjSupabase.remove(payload);
+              else await window.GjjSupabase.saveAll(getAllAppRows());
+            } else if (cloudProvider.value === 'jsonbin' && window.GjjJsonBin) {
+              await window.GjjJsonBin.save(getAllRawRows());
+            }
+          } finally {
+            saving.value = false;
+          }
+        }
+
+        async function saveToCloud() {
+          if (!useCloud.value) return;
+          try {
+            await persistCloud('saveAll');
+            ElMessage.success(
+              cloudProvider.value === 'supabase'
+                ? '已整表保存到 Supabase'
+                : '已保存到 JSONBin'
+            );
+          } catch (e) {
+            ElMessage.error(e.message || '保存失败');
+          }
         }
 
         function openAddDialog() {
@@ -876,10 +1147,10 @@
         }
 
         async function deleteItem(item) {
-          if (!isAddedItem(item)) return;
+          if (!canEditItem(item)) return;
           try {
             await ElMessageBox.confirm(
-              `确定删除第 ${item.period} 期（${item.date}）这条新增数据吗？`,
+              `确定删除第 ${item.period} 期（${item.date}）这条数据吗？`,
               '删除确认',
               { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
             );
@@ -892,9 +1163,16 @@
             .filter((d) => d.index !== item.index);
           rebuildList(raw);
           addedRows.value = addedRows.value.filter((d) => d.index !== item.index);
-          await nextTick();
-          refreshCharts();
-          ElMessage.success('已删除');
+          try {
+            await persistCloud('delete', item.index);
+            await nextTick();
+            refreshCharts();
+            ElMessage.success(useCloud.value ? '已删除并同步到云端' : '已删除');
+          } catch (e) {
+            ElMessage.error(e.message || '已删除本地，但云端同步失败');
+            await nextTick();
+            refreshCharts();
+          }
         }
 
         async function submitAdd() {
@@ -941,36 +1219,49 @@
               else raw.push(row);
               const addedPos = addedRows.value.findIndex((d) => d.index === editingIndex.value);
               if (addedPos >= 0) addedRows.value[addedPos] = { ...row };
-              else addedRows.value.push({ ...row });
+              else if (!useCloud.value) addedRows.value.push({ ...row });
             } else {
               raw.push(row);
-              addedRows.value.push({ ...row });
+              if (!useCloud.value) addedRows.value.push({ ...row });
             }
             rebuildList(raw);
+            await persistCloud(isEdit ? 'update' : 'insert', row);
             addVisible.value = false;
             await nextTick();
             refreshCharts();
-            ElMessage.success(isEdit ? `已保存第 ${row.period} 期修改` : `已添加第 ${row.period} 期数据`);
+            const tip = isEdit ? `已保存第 ${row.period} 期修改` : `已添加第 ${row.period} 期数据`;
+            ElMessage.success(useCloud.value ? tip + '（已同步云端）' : tip);
+          } catch (e) {
+            ElMessage.error(e.message || '保存失败');
           } finally {
             adding.value = false;
           }
         }
 
+        /** 导出 / 备份：与 Supabase、data.json 字段一致 */
         function toRawRows(rows) {
           return rows
             .map((d) => {
-              const item = {
-                index: d.index,
-                period: d.period,
-                date: d.date,
-                total: d.total,
-                principal: d.principal,
-                interest: d.interest,
-                penalty: d.penalty,
+              const n = normalizeRow(d);
+              if (!n) return null;
+              return {
+                row_index: n.index,
+                period: n.period,
+                pay_date: n.date,
+                total: n.total,
+                principal: n.principal,
+                interest: n.interest,
+                penalty: n.penalty,
+                rate: n.rate != null ? n.rate : null,
               };
-              if (d.rate != null) item.rate = d.rate;
-              return item;
             })
+            .filter(Boolean)
+            .sort((a, b) => (b.row_index || 0) - (a.row_index || 0));
+        }
+
+        /** 云端写入用的应用内格式 */
+        function getAllAppRows() {
+          return normalizeRows(list.value.flatMap((d) => d.items || [d]))
             .sort((a, b) => (b.index || 0) - (a.index || 0));
         }
 
@@ -990,7 +1281,10 @@
         }
 
         function printAllData() {
-          showJson('全部数据（可替换 data.json）', getAllRawRows());
+          showJson(
+            useCloud.value ? '全部数据（云端备份）' : '全部数据（可替换 data.json）',
+            getAllRawRows()
+          );
         }
 
         function printAddedData() {
@@ -1001,6 +1295,52 @@
           showJson('本次新增数据（可追加到 data.json）', toRawRows(addedRows.value), {
             wrapArray: false,
           });
+        }
+
+        async function maybeImportLocalToSupabase() {
+          try {
+            await ElMessageBox.confirm(
+              'Supabase 表里还没有数据。是否把本地 assets/data.json 导入？',
+              '导入数据',
+              { confirmButtonText: '导入', cancelButtonText: '暂不', type: 'info' }
+            );
+          } catch {
+            return [];
+          }
+          const res = await fetch('./assets/data.json');
+          if (!res.ok) throw new Error('无法读取本地 data.json');
+          const raw = await res.json();
+          if (!Array.isArray(raw) || !raw.length) throw new Error('本地 data.json 为空');
+          await window.GjjSupabase.saveAll(raw);
+          ElMessage.success(`已导入 ${raw.length} 条到 Supabase`);
+          return raw;
+        }
+
+        async function loadInitialData() {
+          configHint.value = '';
+          cloudProvider.value = '';
+
+          if (window.GjjSupabase && window.GjjSupabase.isConfigured()) {
+            cloudProvider.value = 'supabase';
+            let raw = await window.GjjSupabase.load();
+            if (!raw.length) {
+              raw = await maybeImportLocalToSupabase();
+            }
+            list.value = mergeByPeriod(raw);
+            return;
+          }
+
+          if (window.GjjJsonBin && window.GjjJsonBin.isConfigured()) {
+            cloudProvider.value = 'jsonbin';
+            const raw = await window.GjjJsonBin.load();
+            list.value = mergeByPeriod(raw);
+            return;
+          }
+
+          const res = await fetch('./assets/data.json');
+          if (!res.ok) throw new Error('无法加载 data.json');
+          const raw = await res.json();
+          list.value = mergeByPeriod(raw);
         }
 
         async function copyJson() {
@@ -1067,6 +1407,7 @@
         function initCharts() {
           const data = list.value;
           const labels = axisLabel(data);
+          const layout = chartLayout();
           const colors = {
             principal: '#2b6cb0',
             interest: '#c05621',
@@ -1076,11 +1417,15 @@
           };
           const rateAxis = {
             type: 'value',
-            name: '利率%',
+            name: layout.narrow ? '' : '利率%',
             min: 2.4,
             max: 3.4,
-            splitNumber: 5,
-            axisLabel: { formatter: '{value}%', color: colors.rate },
+            splitNumber: layout.narrow ? 4 : 5,
+            axisLabel: {
+              formatter: '{value}%',
+              color: colors.rate,
+              fontSize: layout.axisFont,
+            },
             nameTextStyle: { color: colors.rate },
             splitLine: { show: false },
           };
@@ -1090,14 +1435,14 @@
             yAxisIndex: 1,
             step: 'end',
             symbol: 'circle',
-            symbolSize: 7,
+            symbolSize: layout.narrow ? 5 : 7,
             z: 10,
-            lineStyle: { width: 2.2, color: colors.rate },
+            lineStyle: { width: layout.narrow ? 1.8 : 2.2, color: colors.rate },
             itemStyle: { color: colors.rate },
             data: rates,
           });
           const rateLegend = {
-            top: 0,
+            ...layout.legend,
             selected: { 利率: false },
           };
 
@@ -1116,6 +1461,7 @@
             tooltip: {
               trigger: 'axis',
               axisPointer: { type: 'cross' },
+              confine: true,
               formatter(params) {
                 const i = params[0].dataIndex;
                 const row = periodRows[i];
@@ -1133,20 +1479,21 @@
               },
             },
             legend: { ...rateLegend, data: ['本金', '利息', '罚息', '利率'] },
-            grid: { left: 56, right: 56, top: 40, bottom: 56 },
+            grid: layout.grid,
             dataZoom: [
               { type: 'inside', start: 0, end: 100 },
-              { type: 'slider', height: 18, bottom: 8 },
+              { type: 'slider', height: layout.sliderHeight, bottom: 8 },
             ],
             xAxis: {
               type: 'category',
               data: labels,
-              axisLabel: { rotate: 40, fontSize: 11 },
+              axisLabel: { rotate: 40, fontSize: layout.axisFont },
             },
             yAxis: [
               {
                 type: 'value',
-                name: '金额',
+                name: layout.narrow ? '' : '金额',
+                axisLabel: { fontSize: layout.axisFont },
                 splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
               },
               rateAxis,
@@ -1156,7 +1503,7 @@
                 name: '本金',
                 type: 'bar',
                 stack: 'total',
-                barMaxWidth: 28,
+                barMaxWidth: layout.barMax,
                 itemStyle: { color: colors.principal },
                 data: periodRows.map((d) => d.principal),
               },
@@ -1164,7 +1511,7 @@
                 name: '利息',
                 type: 'bar',
                 stack: 'total',
-                barMaxWidth: 28,
+                barMaxWidth: layout.barMax,
                 itemStyle: { color: colors.interest },
                 data: periodRows.map((d) => d.interest),
               },
@@ -1172,7 +1519,7 @@
                 name: '罚息',
                 type: 'bar',
                 stack: 'total',
-                barMaxWidth: 28,
+                barMaxWidth: layout.barMax,
                 itemStyle: {
                   color: colors.penalty,
                   borderRadius: [4, 4, 0, 0],
@@ -1193,6 +1540,7 @@
             tooltip: {
               trigger: 'axis',
               axisPointer: { type: 'cross' },
+              confine: true,
               formatter(params) {
                 let html = `${params[0].axisValue}年<br/>`;
                 let total = 0;
@@ -1213,13 +1561,13 @@
               },
             },
             legend: { ...rateLegend, data: ['本金', '利息', '罚息', '利率'] },
-            grid: { left: 64, right: 56, top: 40, bottom: 36 },
+            grid: layout.yearGrid,
             xAxis: {
               type: 'category',
               data: yearData.map((d) => d.year),
               triggerEvent: true,
               axisLabel: {
-                fontSize: 13,
+                fontSize: layout.narrow ? 11 : 13,
                 color: '#2b6cb0',
                 fontWeight: 600,
               },
@@ -1227,7 +1575,8 @@
             yAxis: [
               {
                 type: 'value',
-                name: '金额',
+                name: layout.narrow ? '' : '金额',
+                axisLabel: { fontSize: layout.axisFont },
                 splitLine: { lineStyle: { type: 'dashed', color: '#d8e0ea' } },
               },
               rateAxis,
@@ -1237,7 +1586,7 @@
                 name: '本金',
                 type: 'bar',
                 stack: 'year',
-                barMaxWidth: 56,
+                barMaxWidth: layout.yearBarMax,
                 cursor: 'pointer',
                 data: yearData.map((d) => Number(d.principal.toFixed(2))),
               },
@@ -1245,7 +1594,7 @@
                 name: '利息',
                 type: 'bar',
                 stack: 'year',
-                barMaxWidth: 56,
+                barMaxWidth: layout.yearBarMax,
                 cursor: 'pointer',
                 data: yearData.map((d) => Number(d.interest.toFixed(2))),
               },
@@ -1253,14 +1602,14 @@
                 name: '罚息',
                 type: 'bar',
                 stack: 'year',
-                barMaxWidth: 56,
+                barMaxWidth: layout.yearBarMax,
                 cursor: 'pointer',
                 data: yearData.map((d) => Number(d.penalty.toFixed(2))),
                 label: {
                   show: true,
                   position: 'top',
                   color: '#5a6a7e',
-                  fontSize: 11,
+                  fontSize: layout.narrow ? 10 : 11,
                   formatter: (p) => yearData[p.dataIndex].total.toFixed(0),
                 },
               },
@@ -1289,6 +1638,9 @@
               rateLegend,
               fmtRate,
               getRate: rowRate,
+              grid: layout.lineGrid,
+              axisFont: layout.axisFont,
+              confine: true,
             })
           );
           charts.push(line);
@@ -1299,18 +1651,19 @@
             color: [colors.principal, colors.interest, colors.penalty],
             tooltip: {
               trigger: 'item',
+              confine: true,
               formatter: ({ name, value, percent }) =>
                 `${name}<br/>${value.toFixed(2)}（${percent}%）`,
             },
-            legend: { bottom: 0 },
+            legend: { bottom: 0, textStyle: { fontSize: layout.axisFont } },
             series: [
               {
                 type: 'pie',
-                radius: ['42%', '68%'],
+                radius: layout.pieRadius,
                 center: ['50%', '46%'],
                 avoidLabelOverlap: true,
                 itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-                label: { formatter: '{b}\n{d}%' },
+                label: layout.pieLabel,
                 data: [
                   { name: '本金', value: s.principal },
                   { name: '利息', value: s.interest },
@@ -1322,22 +1675,36 @@
           charts.push(pie);
         }
 
+        let lastNarrow = window.innerWidth < 640;
+
         function onResize() {
+          syncViewport();
+          const narrow = window.innerWidth < 640;
+          if (narrow !== lastNarrow && charts.length) {
+            lastNarrow = narrow;
+            refreshCharts();
+            return;
+          }
+          lastNarrow = narrow;
           charts.forEach((c) => c.resize());
         }
 
         onMounted(async () => {
           try {
-            const res = await fetch('./assets/data.json');
-            if (!res.ok) throw new Error('无法加载 data.json');
-            const raw = await res.json();
-            list.value = mergeByPeriod(raw);
+            await loadInitialData();
             ready.value = true;
             await nextTick();
             initCharts();
             window.addEventListener('resize', onResize);
           } catch (e) {
             error.value = e.message || '数据加载失败';
+            if (cloudProvider.value === 'supabase') {
+              configHint.value =
+                '请检查 config.js 的 supabase.url / anonKey，并确认已执行 supabase-setup.sql。';
+            } else if (cloudProvider.value === 'jsonbin') {
+              configHint.value =
+                '请检查 config.js 中的 binId / masterKey，或到 JSONBin 确认 Bin 内容为数组。';
+            }
           }
         });
 
@@ -1351,6 +1718,12 @@
           tableList,
           ready,
           error,
+          configHint,
+          useCloud,
+          cloudProvider,
+          cloudLabel,
+          saving,
+          saveToCloud,
           sum,
           loanPrincipal,
           remainPrincipal,
@@ -1379,7 +1752,9 @@
           lastRatePreview,
           onKeepRateChange,
           isAddedItem,
+          canEditItem,
           hasAddedInPeriod,
+          hasEditableInPeriod,
           isAddedPeriod,
           openAddDialog,
           openEditDialog,
@@ -1392,6 +1767,14 @@
           jsonTitle,
           jsonText,
           copyJson,
+          isMobile,
+          dialogWidth,
+          scheduleDialogWidth,
+          jsonDialogWidth,
+          tableHeight,
+          scheduleTableHeight,
+          isMobileExpanded,
+          toggleMobileExpand,
         };
       },
     });
