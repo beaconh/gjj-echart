@@ -174,9 +174,9 @@
           <h2>还款明细列表</h2>
           <div class="list-actions">
             <el-button type="primary" @click="openAddDialog">添加数据</el-button>
-            <el-button v-if="useCloud" :loading="saving" @click="saveToCloud">保存到云端</el-button>
-            <el-button @click="printAllData">导出全部 JSON</el-button>
-            <el-button v-if="!useCloud" @click="printAddedData">导出新增 JSON</el-button>
+            <el-button v-if="useCloud && !isMobile" :loading="saving" @click="saveToCloud">保存到云端</el-button>
+            <el-button v-if="!isMobile" @click="printAllData">导出全部 JSON</el-button>
+            <el-button v-if="!useCloud && !isMobile" @click="printAddedData">导出新增 JSON</el-button>
           </div>
         </div>
         <p class="hint">
@@ -686,7 +686,7 @@
       const parsed = String(lastDate).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
       const year = parsed ? Number(parsed[1]) : new Date().getFullYear();
       const month = parsed ? Number(parsed[2]) : new Date().getMonth() + 1;
-      const day = parsed ? Number(parsed[3]) : 20;
+      const day = 20;
       const r = annualRatePercent / 100 / 12;
       const monthlyPrincipal = principal / periods;
       let balance = principal;
