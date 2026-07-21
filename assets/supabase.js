@@ -21,14 +21,16 @@
 
   function headers(extra) {
     const { anonKey } = conf();
-    return Object.assign(
-      {
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-        Authorization: 'Bearer ' + anonKey,
-      },
-      extra || {}
-    );
+    const key = String(anonKey).trim();
+    const h = {
+      'Content-Type': 'application/json',
+      apikey: key,
+    };
+    // 旧版 anon JWT（eyJ…）需要 Bearer；新版 sb_publishable_ 只靠 apikey，Bearer 非 JWT 会被拒
+    if (key.startsWith('eyJ')) {
+      h.Authorization = 'Bearer ' + key;
+    }
+    return Object.assign(h, extra || {});
   }
 
   function normalize(row) {

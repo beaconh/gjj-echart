@@ -1,2 +1,3 @@
-
-
+# 可选：若不想把密钥推到 GitHub，取消下一行注释，并改用 GitHub Actions 注入
+# assets/config.js
+# 强密码 lcI2FNtFLCqtV0a3
