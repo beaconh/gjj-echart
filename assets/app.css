@@ -88,6 +88,9 @@ header p {
 }
 
 .overview-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -135,6 +138,10 @@ header p {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.metric-row.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .metric .k {
   display: block;
   font-size: 0.75rem;
@@ -165,13 +172,6 @@ header p {
 
 .metric-link:hover {
   background: #f0f6fb;
-}
-
-.metric-link .hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.7rem;
-  color: var(--accent);
 }
 
 .schedule-summary {
@@ -259,7 +259,8 @@ header p {
 }
 
 .forecast-note {
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
   font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.45;
@@ -597,6 +598,7 @@ header p {
   .overview { grid-template-columns: 1fr; }
 
   .metric-row,
+  .metric-row.two,
   .metric-row.four { grid-template-columns: repeat(2, 1fr); }
 
   .row-2 { grid-template-columns: 1fr; }
@@ -662,10 +664,6 @@ header p {
   .metric-link {
     padding: 8px;
     margin: -4px -6px;
-  }
-
-  .metric-link .hint {
-    font-size: 0.68rem;
   }
 
   .loan-progress .meta {
@@ -782,6 +780,7 @@ header p {
 
 @media (max-width: 480px) {
   .metric-row,
+  .metric-row.two,
   .metric-row.four {
     grid-template-columns: 1fr 1fr;
     gap: 10px;

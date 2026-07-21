@@ -111,7 +111,6 @@
             <div class="metric muted metric-link" @click="openScheduleDialog">
               <span class="k">剩余期数</span>
               <span class="v">{{ forecast.periods }} 期</span>
-              <span class="hint">点击查看待还款明细</span>
             </div>
             <div class="metric interest">
               <span class="k">预计剩余利息</span>
@@ -120,6 +119,16 @@
             <div class="metric total">
               <span class="k">预计还要还</span>
               <span class="v">{{ fmt(forecast.total) }}</span>
+            </div>
+          </div>
+          <div class="metric-row two">
+            <div class="metric total">
+              <span class="k">下期预计需还</span>
+              <span class="v">{{ fmt(forecast.nextPayment) }}</span>
+            </div>
+            <div class="metric muted">
+              <span class="k">还需要还</span>
+              <span class="v">{{ forecast.remainSpanText }}</span>
             </div>
           </div>
           <p class="forecast-note">
@@ -968,10 +977,26 @@
             rate,
             periods
           );
+          const principal = remainPrincipal.value;
+          let nextPayment = 0;
+          if (calc.periods > 0 && principal > 0) {
+            const monthlyInterest = principal * (rate / 100 / 12);
+            nextPayment = calc.monthlyPrincipal + monthlyInterest;
+          }
+          const years = Math.floor(calc.periods / 12);
+          const months = calc.periods % 12;
+          let remainSpanText = '—';
+          if (calc.periods > 0) {
+            if (years > 0 && months > 0) remainSpanText = `${years}年${months}个月`;
+            else if (years > 0) remainSpanText = `${years}年`;
+            else remainSpanText = `${months}个月`;
+          }
           return {
             rate,
             maturity: FORECAST_MATURITY,
             lastDate,
+            nextPayment,
+            remainSpanText,
             ...calc,
           };
         });
