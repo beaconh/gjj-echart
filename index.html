@@ -27,9 +27,12 @@
       <header>
         <div class="header-row">
           <h1>还款明细图表</h1>
-          <span class="data-source" :class="useCloud ? 'cloud' : 'local'">
-            {{ cloudLabel }}
-          </span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <a href="./schedule.html" style="font-size:0.75rem;font-weight:600;padding:4px 10px;border-radius:999px;background:#e8f5f2;color:var(--accent);text-decoration:none;white-space:nowrap">日历排班</a>
+            <span class="data-source" :class="useCloud ? 'cloud' : 'local'">
+              {{ cloudLabel }}
+            </span>
+          </div>
         </div>
         <p>共 {{ list.length }} 期 · {{ list[0].date }} 至 {{ list[list.length - 1].date }}</p>
       </header>

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>日历排班</title>
+  <link rel="icon" href="./assets/logo.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="./utils/elementplus@2.14.3.css" />
+  <script src="./utils/vue@v3.5.40.min.js"></script>
+  <script src="./utils/elementplus@2.14.3.js"></script>
+  <script src="./utils/elementplus-zh-cn@2.14.3.js"></script>
+  <script src="./assets/lunar.js"></script>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --bg-deep: #dce6f0;
+      --surface: #ffffff;
+      --text: #1a2332;
+      --muted: #5a6a7e;
+      --accent: #0d7a6f;
+      --border: #c8d4e0;
+      --shadow: 0 8px 28px rgba(26, 35, 50, 0.08);
+      --day: #2b6cb0;
+      --day-bg: #e8f1fb;
+      --night: #6b46c1;
+      --night-bg: #f0eaf8;
+      --rest: #5a6a7e;
+      --rest-bg: #eef2f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #c5ebe4 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 0%, #c9daf0 0%, transparent 50%),
+        linear-gradient(165deg, var(--bg) 0%, var(--bg-deep) 100%);
+    }
+
+    #app {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    header h1 {
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-link {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #e8f5f2;
+    }
+
+    .nav-link:hover { opacity: 0.85; }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 22px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .settings {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 16px 24px;
+    }
+
+    .settings .field .el-date-editor {
+      width: 100%;
+      max-width: 220px;
+    }
+
+    .calendar-months {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .month-block {
+      border: none;
+      border-radius: 18px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, #f7fbfa 0%, #ffffff 28%);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 10px 28px rgba(26, 35, 50, 0.06);
+      padding: 4px 8px 12px;
+    }
+
+    .month-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: 14px 10px 6px;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      width: 100%;
+      padding: 0 4px;
+    }
+
+    .weekday {
+      text-align: center;
+      padding: 8px 0 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #8a9aab;
+    }
+
+    .weekday.weekend {
+      color: #c07878;
+    }
+
+    .day-cell {
+      min-height: 86px;
+      padding: 0;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+    }
+
+    .day-cell:nth-child(7n) {
+      border-right: none;
+    }
+
+    .cell {
+      height: 100%;
+      min-height: 86px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
+      padding: 7px 6px 6px;
+      border-radius: 12px;
+      background: rgba(248, 250, 252, 0.9);
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .cell.has-day { background: #eef5fc; }
+    .cell.has-night { background: #f4eefb; }
+    .cell.has-rest { background: #f2f4f7; }
+
+    .cell.is-other {
+      background: transparent;
+      opacity: 0.42;
+    }
+
+    .cell.is-today {
+      box-shadow: 0 0 0 2px var(--accent), 0 6px 16px rgba(13, 122, 111, 0.18);
+      background: #e7f6f3;
+    }
+
+    .cell.is-past:not(.is-today) {
+      opacity: 0.55;
+    }
+
+    .cell-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 2px;
+    }
+
+    .cell .date-num {
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--text);
+    }
+
+    .cell.is-other .date-num,
+    .cell.is-past .date-num {
+      color: #93a1b3;
+    }
+
+    .cell.is-today .date-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+    }
+
+    .cell .lunar {
+      font-size: 0.68rem;
+      color: #8b9aab;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .cell .lunar.is-term,
+    .cell .lunar.is-month {
+      color: #c05621;
+      font-weight: 600;
+    }
+
+    .cell .tag {
+      margin-top: auto;
+      align-self: flex-start;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+    }
+
+    .cell .tag.day { background: rgba(43, 108, 176, 0.14); color: var(--day); }
+    .cell .tag.night { background: rgba(107, 70, 193, 0.14); color: var(--night); }
+    .cell .tag.rest { background: rgba(90, 106, 126, 0.14); color: var(--rest); }
+
+    .cell.is-other .tag {
+      opacity: 0.7;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .pattern-preview {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .chip.day { background: var(--day-bg); color: var(--day); }
+    .chip.night { background: var(--night-bg); color: var(--night); }
+    .chip.rest { background: var(--rest-bg); color: var(--rest); }
+
+    .today-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .today-banner .label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .today-banner .shift {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .today-banner .shift.day { color: var(--day); }
+    .today-banner .shift.night { color: var(--night); }
+    .today-banner .shift.rest { color: var(--rest); }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot.day { background: var(--day); }
+    .dot.night { background: var(--night); }
+    .dot.rest { background: var(--rest); }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .add-month-row {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .add-month-row .el-button {
+      min-width: 160px;
+    }
+
+    @media (max-width: 640px) {
+      #app {
+        padding: 14px 10px 32px;
+      }
+
+      header h1 {
+        font-size: 1.35rem;
+      }
+
+      header p {
+        font-size: 0.85rem;
+        margin-bottom: 14px;
+      }
+
+      .panel {
+        padding: 14px 12px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+      }
+
+      .settings {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+      }
+
+      .settings .field .el-date-editor {
+        max-width: none;
+      }
+
+      .settings .el-button {
+        width: 100%;
+      }
+
+      .add-month-row .el-button {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .pattern-preview {
+        gap: 5px;
+      }
+
+      .chip {
+        min-width: 32px;
+        height: 28px;
+        padding: 0 8px;
+        font-size: 0.8rem;
+      }
+
+      .today-banner .shift {
+        font-size: 1.25rem;
+      }
+
+      .legend {
+        gap: 10px;
+        font-size: 0.78rem;
+      }
+
+      .month-title {
+        font-size: 0.98rem;
+        padding: 12px 8px 4px;
+      }
+
+      .calendar-months {
+        gap: 16px;
+      }
+
+      .month-block {
+        padding: 2px 4px 10px;
+        border-radius: 16px;
+      }
+
+      .month-grid {
+        gap: 3px;
+        padding: 0 2px;
+      }
+
+      .weekday {
+        padding: 6px 0 2px;
+        font-size: 0.7rem;
+      }
+
+      .day-cell,
+      .cell {
+        min-height: 55px;
+      }
+
+      .cell {
+        gap: 1px;
+        padding: 5px 3px 4px;
+        border-radius: 10px;
+      }
+
+      .cell .date-num {
+        font-size: 0.82rem;
+      }
+
+      .cell.is-today .date-num {
+        width: 22px;
+        height: 22px;
+        font-size: 0.72rem;
+      }
+
+      .cell .lunar {
+        font-size: 0.6rem;
+      }
+
+      .cell .tag {
+        font-size: 0.64rem;
+        padding: 1px 5px;
+      }
+
+      .hint {
+        font-size: 0.75rem;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .day-cell,
+      .cell {
+        min-height: 66px;
+      }
+
+      .cell {
+        padding: 4px 2px 3px;
+      }
+
+      .cell .lunar {
+        font-size: 0.56rem;
+      }
+
+      .cell .tag {
+        font-size: 0.6rem;
+        padding: 0 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-row">
+        <h1>日历排班</h1>
+        <a class="nav-link" href="./index.html">还款明细</a>
+      </div>
+      <p>设定起始日后，按「白白夜夜休休」循环排班；一次显示本月与下月。</p>
+    </header>
+
+    <section class="panel">
+      <div class="settings">
+        <div class="field">
+          <label>起始日期（这一天起算第一个「白」）</label>
+          <el-date-picker
+            v-model="startDate"
+            type="date"
+            placeholder="选择起始日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            :clearable="false"
+            @change="saveStart"
+          />
+        </div>
+        <div class="field">
+          <label>轮班规律</label>
+          <div class="pattern-preview">
+            <span
+              v-for="(s, i) in PATTERN"
+              :key="i"
+              class="chip"
+              :class="shiftClass(s)"
+            >{{ s }}</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>今日前排班</label>
+          <el-button :type="showPast ? 'primary' : 'default'" @click="showPast = !showPast">
+            {{ showPast ? '已显示今日前' : '已隐藏今日前' }}
+          </el-button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel today-banner" v-if="todayShift">
+      <div>
+        <div class="label">今天 {{ todayText }} · {{ todayLunar }}</div>
+        <div class="shift" :class="shiftClass(todayShift)">{{ todayShift }}班</div>
+      </div>
+      <div class="legend">
+        <span><i class="dot day"></i>白班</span>
+        <span><i class="dot night"></i>夜班</span>
+        <span><i class="dot rest"></i>休息</span>
+      </div>
+    </section>
+
+    <section class="panel calendar-panel">
+      <div class="calendar-months">
+        <div
+          v-for="month in months"
+          :key="month.id"
+          class="month-block"
+        >
+          <div class="month-title">{{ month.title }}</div>
+          <div class="month-grid">
+            <div
+              v-for="(w, wi) in WEEKDAYS"
+              :key="w"
+              class="weekday"
+              :class="{ weekend: wi >= 5 }"
+            >{{ w }}</div>
+            <div
+              v-for="day in month.days"
+              :key="day.key"
+              class="day-cell"
+            >
+              <div
+                class="cell"
+                :class="[
+                  {
+                    'is-other': !day.current,
+                    'is-today': day.key === todayKey,
+                    'is-past': !showPast && day.key < todayKey
+                  },
+                  shiftTone(day.key)
+                ]"
+              >
+                <div class="cell-top">
+                  <span class="date-num">{{ day.num }}</span>
+                </div>
+                <span
+                  class="lunar"
+                  :class="lunarClass(day.key)"
+                >{{ day.lunar }}</span>
+                <span
+                  v-if="displayShift(day.key)"
+                  class="tag"
+                  :class="shiftClass(displayShift(day.key))"
+                >{{ displayShift(day.key) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="add-month-row">
+        <el-button type="primary" plain @click="addNextMonth">
+          增加下一个月（{{ nextMonthLabel }}）
+        </el-button>
+      </div>
+      <p class="hint">
+        起始日 {{ startDate }} 为周期第 1 天（白）。之后按 6 天一轮循环：白 → 白 → 夜 → 夜 → 休 → 休。
+        默认不显示今天之前的排班，可点按钮切换。更改起始日后会立即重算并保存在本机。
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, watch } = Vue;
+    const { ElMessage } = ElementPlus;
+
+    const STORAGE_KEY = "gjj-schedule-start";
+    const PATTERN = ["白", "白", "夜", "夜", "休", "休"];
+    const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+
+    function toKey(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseKey(key) {
+      const [y, m, d] = key.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function dayDiff(aKey, bKey) {
+      const a = parseKey(aKey);
+      const b = parseKey(bKey);
+      return Math.round((a - b) / 86400000);
+    }
+
+    function defaultStart() {
+      return toKey(new Date());
+    }
+
+    /** 周一为每周第一天：一 二 三 四 五 六 日 */
+    function buildMonthDays(year, monthIndex) {
+      const first = new Date(year, monthIndex, 1);
+      const lastDate = new Date(year, monthIndex + 1, 0).getDate();
+      const mondayIndex = (first.getDay() + 6) % 7;
+      const days = [];
+
+      function pushDay(d, current) {
+        const key = toKey(d);
+        days.push({
+          key,
+          num: d.getDate(),
+          current,
+          lunar: LunarCalendar.lunarLabel(key),
+        });
+      }
+
+      for (let i = 0; i < mondayIndex; i++) {
+        pushDay(new Date(year, monthIndex, 1 - (mondayIndex - i)), false);
+      }
+      for (let n = 1; n <= lastDate; n++) {
+        pushDay(new Date(year, monthIndex, n), true);
+      }
+      let nextNum = 1;
+      while (days.length % 7 !== 0) {
+        pushDay(new Date(year, monthIndex + 1, nextNum++), false);
+      }
+      return days;
+    }
+
+    function makeMonth(year, monthIndex) {
+      const d = new Date(year, monthIndex, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      return {
+        id: `${y}-${m}`,
+        title: `${y}年${m + 1}月`,
+        days: buildMonthDays(y, m),
+      };
+    }
+
+    const app = createApp({
+      setup() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        const startDate = ref(saved || defaultStart());
+        const showPast = ref(false);
+        const todayKey = toKey(new Date());
+        const now = new Date();
+
+        const months = ref([
+          makeMonth(now.getFullYear(), now.getMonth()),
+          makeMonth(now.getFullYear(), now.getMonth() + 1),
+        ]);
+
+        const nextMonthLabel = computed(() => {
+          const last = months.value[months.value.length - 1];
+          const [y, m] = last.id.split("-").map(Number);
+          const d = new Date(y, m + 1, 1);
+          return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+        });
+
+        function addNextMonth() {
+          const last = months.value[months.value.length - 1];
+          const [y, m] = last.id.split("-").map(Number);
+          const d = new Date(y, m + 1, 1);
+          months.value.push(makeMonth(d.getFullYear(), d.getMonth()));
+        }
+
+        const todayText = computed(() => {
+          const d = new Date();
+          return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+        });
+
+        const todayLunar = computed(() => {
+          const info = LunarCalendar.solar2lunar(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            now.getDate()
+          );
+          if (!info) return "";
+          return info.Term
+            ? `${info.IMonthCn}${info.IDayCn}（${info.Term}）`
+            : `${info.IMonthCn}${info.IDayCn}`;
+        });
+
+        function shiftOf(dayKey) {
+          if (!startDate.value || !dayKey) return "";
+          const diff = dayDiff(dayKey, startDate.value);
+          const idx = ((diff % PATTERN.length) + PATTERN.length) % PATTERN.length;
+          return PATTERN[idx];
+        }
+
+        function displayShift(dayKey) {
+          if (!showPast.value && dayKey < todayKey) return "";
+          return shiftOf(dayKey);
+        }
+
+        function shiftClass(s) {
+          if (s === "白") return "day";
+          if (s === "夜") return "night";
+          return "rest";
+        }
+
+        function shiftTone(dayKey) {
+          const s = displayShift(dayKey);
+          if (s === "白") return "has-day";
+          if (s === "夜") return "has-night";
+          if (s === "休") return "has-rest";
+          return "";
+        }
+
+        function lunarClass(dayKey) {
+          const info = LunarCalendar.solar2lunar(
+            ...dayKey.split("-").map(Number)
+          );
+          if (!info) return "";
+          if (info.Term) return "is-term";
+          if (info.lDay === 1) return "is-month";
+          return "";
+        }
+
+        const todayShift = computed(() => shiftOf(todayKey));
+
+        function saveStart() {
+          if (!startDate.value) return;
+          localStorage.setItem(STORAGE_KEY, startDate.value);
+          ElMessage.success("起始日期已保存，日历已按新周期重排");
+        }
+
+        if (!saved) {
+          localStorage.setItem(STORAGE_KEY, startDate.value);
+        }
+
+        return {
+          PATTERN,
+          WEEKDAYS,
+          startDate,
+          showPast,
+          months,
+          nextMonthLabel,
+          addNextMonth,
+          todayKey,
+          todayText,
+          todayLunar,
+          todayShift,
+          displayShift,
+          shiftClass,
+          shiftTone,
+          lunarClass,
+          saveStart,
+        };
+      },
+    });
+
+    app.use(ElementPlus, { locale: ElementPlusLocaleZhCn });
+    app.mount("#app");
+  </script>
+</body>
+</html>
