@@ -10,6 +10,7 @@
   <script src="./utils/elementplus@2.14.3.js"></script>
   <script src="./utils/elementplus-zh-cn@2.14.3.js"></script>
   <script src="./assets/lunar.js"></script>
+  <script src="./assets/holidays.js"></script>
   <style>
     :root {
       --bg: #f0f4f8;
@@ -22,10 +23,16 @@
       --shadow: 0 8px 28px rgba(26, 35, 50, 0.08);
       --day: #2b6cb0;
       --day-bg: #e8f1fb;
+      --mid: #b7791f;
+      --mid-bg: #faf3e6;
       --night: #6b46c1;
       --night-bg: #f0eaf8;
       --rest: #5a6a7e;
       --rest-bg: #eef2f6;
+      --holiday: #c53030;
+      --holiday-bg: #fdecec;
+      --workday: #c05621;
+      --workday-bg: #fff1e6;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -105,6 +112,16 @@
       max-width: 220px;
     }
 
+    .toggle-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .el-button + .el-button {
+      margin-left: 0;
+    }
+
     .calendar-months {
       display: flex;
       flex-direction: column;
@@ -177,12 +194,21 @@
     }
 
     .cell.has-day { background: #eef5fc; }
+    .cell.has-mid { background: #faf6ee; }
     .cell.has-night { background: #f4eefb; }
     .cell.has-rest { background: #f2f4f7; }
+    .cell.has-holiday { background: var(--holiday-bg) !important; }
+    .cell.has-workday { background: var(--workday-bg) !important; }
 
     .cell.is-other {
       background: transparent;
       opacity: 0.42;
+    }
+
+    .cell.is-empty {
+      background: transparent;
+      box-shadow: none;
+      pointer-events: none;
     }
 
     .cell.is-today {
@@ -196,7 +222,7 @@
 
     .cell-top {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: 2px;
     }
@@ -206,6 +232,34 @@
       font-weight: 700;
       line-height: 1.1;
       color: var(--text);
+    }
+
+    .cell.has-holiday .date-num {
+      color: var(--holiday);
+    }
+
+    .cell.has-workday .date-num {
+      color: var(--workday);
+    }
+
+    .mark {
+      flex-shrink: 0;
+      font-size: 0.62rem;
+      font-weight: 700;
+      line-height: 1;
+      padding: 3px 5px;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    .mark.off {
+      color: #fff;
+      background: var(--holiday);
+    }
+
+    .mark.work {
+      color: #fff;
+      background: var(--workday);
     }
 
     .cell.is-other .date-num,
@@ -226,19 +280,14 @@
     }
 
     .cell .lunar {
-      font-size: 0.68rem;
-      color: #8b9aab;
+      font-size: 0.58rem;
+      font-weight: 400;
+      color: #9aa7b5;
       line-height: 1.2;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 100%;
-    }
-
-    .cell .lunar.is-term,
-    .cell .lunar.is-month {
-      color: #c05621;
-      font-weight: 600;
     }
 
     .cell .tag {
@@ -252,9 +301,24 @@
       letter-spacing: 0.02em;
     }
 
+    .cell .tags {
+      margin-top: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .cell .tags .tag {
+      margin-top: 0;
+    }
+
     .cell .tag.day { background: rgba(43, 108, 176, 0.14); color: var(--day); }
+    .cell .tag.mid { background: rgba(183, 121, 31, 0.14); color: var(--mid); }
     .cell .tag.night { background: rgba(107, 70, 193, 0.14); color: var(--night); }
     .cell .tag.rest { background: rgba(90, 106, 126, 0.14); color: var(--rest); }
+    .cell .tag.holiday { background: rgba(197, 48, 48, 0.14); color: var(--holiday); }
+    .cell .tag.workday { background: rgba(192, 86, 33, 0.14); color: var(--workday); }
 
     .cell.is-other .tag {
       opacity: 0.7;
@@ -292,6 +356,7 @@
     }
 
     .chip.day { background: var(--day-bg); color: var(--day); }
+    .chip.mid { background: var(--mid-bg); color: var(--mid); }
     .chip.night { background: var(--night-bg); color: var(--night); }
     .chip.rest { background: var(--rest-bg); color: var(--rest); }
 
@@ -315,6 +380,7 @@
     }
 
     .today-banner .shift.day { color: var(--day); }
+    .today-banner .shift.mid { color: var(--mid); }
     .today-banner .shift.night { color: var(--night); }
     .today-banner .shift.rest { color: var(--rest); }
 
@@ -339,8 +405,47 @@
     }
 
     .dot.day { background: var(--day); }
+    .dot.mid { background: var(--mid); }
     .dot.night { background: var(--night); }
     .dot.rest { background: var(--rest); }
+    .dot.holiday { background: var(--holiday); }
+    .dot.workday { background: var(--workday); }
+
+    .holiday-panel {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fff8f7 0%, #ffffff 100%);
+      border: 1px solid #f0d4d4;
+    }
+
+    .holiday-panel h3 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--holiday);
+      margin-bottom: 10px;
+    }
+
+    .holiday-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+    }
+
+    .holiday-item {
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .holiday-item strong {
+      color: var(--text);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .holiday-item .off-text { color: var(--holiday); }
+    .holiday-item .work-text { color: var(--workday); }
 
     .hint {
       margin-top: 12px;
@@ -390,6 +495,11 @@
       }
 
       .settings .el-button {
+        width: auto;
+        flex: 1 1 calc(50% - 4px);
+      }
+
+      .toggle-row {
         width: 100%;
       }
 
@@ -464,12 +574,21 @@
       }
 
       .cell .lunar {
-        font-size: 0.6rem;
+        font-size: 0.52rem;
       }
 
       .cell .tag {
         font-size: 0.64rem;
         padding: 1px 5px;
+      }
+
+      .mark {
+        font-size: 0.56rem;
+        padding: 2px 4px;
+      }
+
+      .holiday-list {
+        grid-template-columns: 1fr;
       }
 
       .hint {
@@ -488,7 +607,7 @@
       }
 
       .cell .lunar {
-        font-size: 0.56rem;
+        font-size: 0.48rem;
       }
 
       .cell .tag {
@@ -505,7 +624,7 @@
         <h1>日历排班</h1>
         <a class="nav-link" href="./index.html">还款明细</a>
       </div>
-      <p>设定起始日后，按「白白夜夜休休」循环排班；一次显示本月与下月。</p>
+      <p>设定起始日后，按「白白中夜休休」循环排班；一次显示本月与下月。</p>
     </header>
 
     <section class="panel">
@@ -534,10 +653,15 @@
           </div>
         </div>
         <div class="field">
-          <label>今日前排班</label>
-          <el-button :type="showPast ? 'primary' : 'default'" @click="showPast = !showPast">
-            {{ showPast ? '已显示今日前' : '已隐藏今日前' }}
-          </el-button>
+          <label>显示控制</label>
+          <div class="toggle-row">
+            <el-button :type="showPast ? 'primary' : 'default'" @click="togglePast">
+              {{ showPast ? '已显示今日前' : '已隐藏今日前' }}
+            </el-button>
+            <el-button :type="showHolidays ? 'primary' : 'default'" @click="toggleHolidays">
+              {{ showHolidays ? '已显示节假日' : '已隐藏节假日' }}
+            </el-button>
+          </div>
         </div>
       </div>
     </section>
@@ -546,11 +670,20 @@
       <div>
         <div class="label">今天 {{ todayText }} · {{ todayLunar }}</div>
         <div class="shift" :class="shiftClass(todayShift)">{{ todayShift }}班</div>
+        <div v-if="showHolidays && todayHoliday" class="label" style="margin-top:6px">
+          <template v-if="todayHoliday.type === 'off'">法定放假 · {{ todayHoliday.name }}</template>
+          <template v-else>调休补班</template>
+        </div>
       </div>
       <div class="legend">
-        <span><i class="dot day"></i>白班</span>
-        <span><i class="dot night"></i>夜班</span>
-        <span><i class="dot rest"></i>休息</span>
+        <span><i class="dot day"></i>白</span>
+        <span><i class="dot mid"></i>中</span>
+        <span><i class="dot night"></i>夜</span>
+        <span><i class="dot rest"></i>休</span>
+        <template v-if="showHolidays">
+          <span><i class="dot holiday"></i>放假</span>
+          <span><i class="dot workday"></i>补班</span>
+        </template>
       </div>
     </section>
 
@@ -575,30 +708,50 @@
               class="day-cell"
             >
               <div
+                v-if="!day.empty"
                 class="cell"
                 :class="[
                   {
-                    'is-other': !day.current,
                     'is-today': day.key === todayKey,
                     'is-past': !showPast && day.key < todayKey
                   },
-                  shiftTone(day.key)
+                  cellTone(day.key)
                 ]"
               >
                 <div class="cell-top">
                   <span class="date-num">{{ day.num }}</span>
+                  <span
+                    v-if="holidayOf(day.key)"
+                    class="mark"
+                    :class="holidayOf(day.key).type"
+                  >{{ holidayOf(day.key).type === 'off' ? '假' : '班' }}</span>
                 </div>
-                <span
-                  class="lunar"
-                  :class="lunarClass(day.key)"
-                >{{ day.lunar }}</span>
-                <span
-                  v-if="displayShift(day.key)"
-                  class="tag"
-                  :class="shiftClass(displayShift(day.key))"
-                >{{ displayShift(day.key) }}</span>
+                <span class="lunar">{{ day.lunar }}</span>
+                <div class="tags">
+                  <span
+                    v-if="displayShift(day.key)"
+                    class="tag"
+                    :class="shiftClass(displayShift(day.key))"
+                  >{{ displayShift(day.key) }}</span>
+                  <span
+                    v-if="holidayOf(day.key)"
+                    class="tag"
+                    :class="holidayOf(day.key).type === 'off' ? 'holiday' : 'workday'"
+                  >{{ holidayOf(day.key).name }}</span>
+                </div>
               </div>
+              <div v-else class="cell is-empty"></div>
             </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="showHolidays" class="holiday-panel">
+        <h3>2026 法定节假日</h3>
+        <div class="holiday-list">
+          <div v-for="item in holidayList" :key="item.name" class="holiday-item">
+            <strong>{{ item.name }}</strong>
+            <span class="off-text">放假 {{ item.off }}</span>
+            <template v-if="item.work !== '无'">；<span class="work-text">{{ item.work }}</span></template>
           </div>
         </div>
       </div>
@@ -608,8 +761,8 @@
         </el-button>
       </div>
       <p class="hint">
-        起始日 {{ startDate }} 为周期第 1 天（白）。之后按 6 天一轮循环：白 → 白 → 夜 → 夜 → 休 → 休。
-        默认不显示今天之前的排班，可点按钮切换。更改起始日后会立即重算并保存在本机。
+        起始日 {{ startDate }} 为周期第 1 天（白）。之后按 6 天一轮循环：白 → 白 → 中 → 夜 → 休 → 休。
+        默认隐藏今日前排班与节假日信息，可分别用按钮切换；节假日开关会保存在本机。
       </p>
     </section>
   </div>
@@ -619,7 +772,8 @@
     const { ElMessage } = ElementPlus;
 
     const STORAGE_KEY = "gjj-schedule-start";
-    const PATTERN = ["白", "白", "夜", "夜", "休", "休"];
+    const STORAGE_SHOW_HOLIDAYS = "gjj-schedule-show-holidays";
+    const PATTERN = ["白", "白", "中", "夜", "休", "休"];
     const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
     function toKey(d) {
@@ -644,32 +798,32 @@
       return toKey(new Date());
     }
 
-    /** 周一为每周第一天：一 二 三 四 五 六 日 */
+    /** 周一为每周第一天；只显示当月日期，前后用空格占位 */
     function buildMonthDays(year, monthIndex) {
       const first = new Date(year, monthIndex, 1);
       const lastDate = new Date(year, monthIndex + 1, 0).getDate();
       const mondayIndex = (first.getDay() + 6) % 7;
       const days = [];
 
-      function pushDay(d, current) {
+      for (let i = 0; i < mondayIndex; i++) {
+        days.push({ key: `pad-prev-${year}-${monthIndex}-${i}`, empty: true });
+      }
+      for (let n = 1; n <= lastDate; n++) {
+        const d = new Date(year, monthIndex, n);
         const key = toKey(d);
         days.push({
           key,
-          num: d.getDate(),
-          current,
+          num: n,
+          current: true,
+          empty: false,
           lunar: LunarCalendar.lunarLabel(key),
         });
       }
-
-      for (let i = 0; i < mondayIndex; i++) {
-        pushDay(new Date(year, monthIndex, 1 - (mondayIndex - i)), false);
-      }
-      for (let n = 1; n <= lastDate; n++) {
-        pushDay(new Date(year, monthIndex, n), true);
-      }
-      let nextNum = 1;
       while (days.length % 7 !== 0) {
-        pushDay(new Date(year, monthIndex + 1, nextNum++), false);
+        days.push({
+          key: `pad-next-${year}-${monthIndex}-${days.length}`,
+          empty: true,
+        });
       }
       return days;
     }
@@ -690,6 +844,7 @@
         const saved = localStorage.getItem(STORAGE_KEY);
         const startDate = ref(saved || defaultStart());
         const showPast = ref(false);
+        const showHolidays = ref(localStorage.getItem(STORAGE_SHOW_HOLIDAYS) === "1");
         const todayKey = toKey(new Date());
         const now = new Date();
 
@@ -743,6 +898,7 @@
 
         function shiftClass(s) {
           if (s === "白") return "day";
+          if (s === "中") return "mid";
           if (s === "夜") return "night";
           return "rest";
         }
@@ -750,22 +906,36 @@
         function shiftTone(dayKey) {
           const s = displayShift(dayKey);
           if (s === "白") return "has-day";
+          if (s === "中") return "has-mid";
           if (s === "夜") return "has-night";
           if (s === "休") return "has-rest";
           return "";
         }
 
-        function lunarClass(dayKey) {
-          const info = LunarCalendar.solar2lunar(
-            ...dayKey.split("-").map(Number)
-          );
-          if (!info) return "";
-          if (info.Term) return "is-term";
-          if (info.lDay === 1) return "is-month";
-          return "";
+        function holidayOf(dayKey) {
+          if (!showHolidays.value) return null;
+          return HolidayCalendar.get(dayKey);
+        }
+
+        function cellTone(dayKey) {
+          const h = holidayOf(dayKey);
+          if (h?.type === "off") return "has-holiday";
+          if (h?.type === "work") return "has-workday";
+          return shiftTone(dayKey);
         }
 
         const todayShift = computed(() => shiftOf(todayKey));
+        const todayHoliday = computed(() => holidayOf(todayKey));
+        const holidayList = HolidayCalendar.LIST;
+
+        function togglePast() {
+          showPast.value = !showPast.value;
+        }
+
+        function toggleHolidays() {
+          showHolidays.value = !showHolidays.value;
+          localStorage.setItem(STORAGE_SHOW_HOLIDAYS, showHolidays.value ? "1" : "0");
+        }
 
         function saveStart() {
           if (!startDate.value) return;
@@ -782,6 +952,9 @@
           WEEKDAYS,
           startDate,
           showPast,
+          showHolidays,
+          togglePast,
+          toggleHolidays,
           months,
           nextMonthLabel,
           addNextMonth,
@@ -789,10 +962,12 @@
           todayText,
           todayLunar,
           todayShift,
+          todayHoliday,
+          holidayList,
           displayShift,
           shiftClass,
-          shiftTone,
-          lunarClass,
+          holidayOf,
+          cellTone,
           saveStart,
         };
       },

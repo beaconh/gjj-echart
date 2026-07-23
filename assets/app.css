@@ -20,6 +20,10 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+.el-button + .el-button {
+  margin-left: 0;
+}
+
 body {
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--text);
