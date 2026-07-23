@@ -122,10 +122,170 @@
       margin-left: 0;
     }
 
+    /* —— 动效 —— */
+    @media (prefers-reduced-motion: no-preference) {
+      .month-list-enter-active {
+        transition:
+          opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .month-list-enter-from {
+        opacity: 0;
+        transform: translateY(36px) scale(0.96);
+      }
+
+      .month-list-move {
+        transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .month-block.is-fresh .day-cell .cell:not(.is-empty) {
+        animation: cellRise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .month-block.is-fresh .day-cell:nth-child(8)  .cell { animation-delay: 0.02s; }
+      .month-block.is-fresh .day-cell:nth-child(9)  .cell { animation-delay: 0.04s; }
+      .month-block.is-fresh .day-cell:nth-child(10) .cell { animation-delay: 0.06s; }
+      .month-block.is-fresh .day-cell:nth-child(11) .cell { animation-delay: 0.08s; }
+      .month-block.is-fresh .day-cell:nth-child(12) .cell { animation-delay: 0.1s; }
+      .month-block.is-fresh .day-cell:nth-child(13) .cell { animation-delay: 0.12s; }
+      .month-block.is-fresh .day-cell:nth-child(14) .cell { animation-delay: 0.14s; }
+      .month-block.is-fresh .day-cell:nth-child(15) .cell { animation-delay: 0.16s; }
+      .month-block.is-fresh .day-cell:nth-child(16) .cell { animation-delay: 0.18s; }
+      .month-block.is-fresh .day-cell:nth-child(17) .cell { animation-delay: 0.2s; }
+      .month-block.is-fresh .day-cell:nth-child(18) .cell { animation-delay: 0.22s; }
+      .month-block.is-fresh .day-cell:nth-child(19) .cell { animation-delay: 0.24s; }
+      .month-block.is-fresh .day-cell:nth-child(20) .cell { animation-delay: 0.26s; }
+      .month-block.is-fresh .day-cell:nth-child(21) .cell { animation-delay: 0.28s; }
+      .month-block.is-fresh .day-cell:nth-child(22) .cell { animation-delay: 0.3s; }
+      .month-block.is-fresh .day-cell:nth-child(23) .cell { animation-delay: 0.32s; }
+      .month-block.is-fresh .day-cell:nth-child(24) .cell { animation-delay: 0.34s; }
+      .month-block.is-fresh .day-cell:nth-child(25) .cell { animation-delay: 0.36s; }
+      .month-block.is-fresh .day-cell:nth-child(26) .cell { animation-delay: 0.38s; }
+      .month-block.is-fresh .day-cell:nth-child(27) .cell { animation-delay: 0.4s; }
+      .month-block.is-fresh .day-cell:nth-child(28) .cell { animation-delay: 0.42s; }
+      .month-block.is-fresh .day-cell:nth-child(29) .cell { animation-delay: 0.44s; }
+      .month-block.is-fresh .day-cell:nth-child(30) .cell { animation-delay: 0.46s; }
+      .month-block.is-fresh .day-cell:nth-child(31) .cell { animation-delay: 0.48s; }
+      .month-block.is-fresh .day-cell:nth-child(32) .cell { animation-delay: 0.5s; }
+      .month-block.is-fresh .day-cell:nth-child(33) .cell { animation-delay: 0.52s; }
+      .month-block.is-fresh .day-cell:nth-child(34) .cell { animation-delay: 0.54s; }
+      .month-block.is-fresh .day-cell:nth-child(35) .cell { animation-delay: 0.56s; }
+      .month-block.is-fresh .day-cell:nth-child(36) .cell { animation-delay: 0.58s; }
+      .month-block.is-fresh .day-cell:nth-child(37) .cell { animation-delay: 0.6s; }
+      .month-block.is-fresh .day-cell:nth-child(38) .cell { animation-delay: 0.62s; }
+      .month-block.is-fresh .day-cell:nth-child(39) .cell { animation-delay: 0.64s; }
+      .month-block.is-fresh .day-cell:nth-child(40) .cell { animation-delay: 0.66s; }
+      .month-block.is-fresh .day-cell:nth-child(41) .cell { animation-delay: 0.68s; }
+      .month-block.is-fresh .day-cell:nth-child(42) .cell { animation-delay: 0.7s; }
+      .month-block.is-fresh .day-cell:nth-child(43) .cell { animation-delay: 0.72s; }
+      .month-block.is-fresh .day-cell:nth-child(44) .cell { animation-delay: 0.74s; }
+      .month-block.is-fresh .day-cell:nth-child(45) .cell { animation-delay: 0.76s; }
+      .month-block.is-fresh .day-cell:nth-child(46) .cell { animation-delay: 0.78s; }
+      .month-block.is-fresh .day-cell:nth-child(47) .cell { animation-delay: 0.8s; }
+      .month-block.is-fresh .day-cell:nth-child(48) .cell { animation-delay: 0.82s; }
+      .month-block.is-fresh .day-cell:nth-child(49) .cell { animation-delay: 0.84s; }
+
+      @keyframes cellRise {
+        from {
+          opacity: 0;
+          transform: translateY(10px) scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      .fade-slide-enter-active,
+      .fade-slide-leave-active {
+        transition:
+          opacity 0.32s ease,
+          transform 0.32s ease,
+          max-height 0.36s ease;
+        overflow: hidden;
+      }
+
+      .fade-slide-enter-from,
+      .fade-slide-leave-to {
+        opacity: 0;
+        transform: translateY(-10px);
+        max-height: 0;
+        margin-top: 0 !important;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-width: 0;
+      }
+
+      .fade-slide-enter-to,
+      .fade-slide-leave-from {
+        max-height: 420px;
+      }
+
+      .tag-pop-enter-active {
+        transition: all 0.32s cubic-bezier(0.34, 1.45, 0.64, 1);
+      }
+
+      .tag-pop-leave-active {
+        transition: all 0.2s ease;
+        position: absolute;
+      }
+
+      .tag-pop-enter-from {
+        opacity: 0;
+        transform: scale(0.5) translateY(4px);
+      }
+
+      .tag-pop-leave-to {
+        opacity: 0;
+        transform: scale(0.7);
+      }
+
+      .tag-pop-move {
+        transition: transform 0.25s ease;
+      }
+
+      .mark-pop-enter-active {
+        transition: all 0.3s cubic-bezier(0.34, 1.45, 0.64, 1);
+      }
+
+      .mark-pop-leave-active {
+        transition: all 0.18s ease;
+      }
+
+      .mark-pop-enter-from,
+      .mark-pop-leave-to {
+        opacity: 0;
+        transform: scale(0.4);
+      }
+
+      .cell.is-today .date-num {
+        animation: todayPulse 2.4s ease-in-out infinite;
+      }
+
+      @keyframes todayPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(13, 122, 111, 0.35); }
+        50% { box-shadow: 0 0 0 6px rgba(13, 122, 111, 0); }
+      }
+
+      .add-month-row .el-button {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .add-month-row .el-button:hover {
+        transform: translateY(-1px);
+      }
+
+      .add-month-row .el-button:active {
+        transform: scale(0.97);
+      }
+    }
+
     .calendar-months {
       display: flex;
       flex-direction: column;
       gap: 22px;
+      position: relative;
     }
 
     .month-block {
@@ -190,7 +350,30 @@
       padding: 7px 6px 6px;
       border-radius: 12px;
       background: rgba(248, 250, 252, 0.9);
-      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      transition:
+        background 0.28s ease,
+        box-shadow 0.28s ease,
+        opacity 0.28s ease,
+        transform 0.28s ease;
+    }
+
+    .cell.is-past:not(.is-today) {
+      opacity: 0.55;
+      transition: opacity 0.35s ease, background 0.28s ease;
+    }
+
+    .cell .tags {
+      margin-top: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-items: center;
+      position: relative;
+      min-height: 20px;
+    }
+
+    .cell .tags .tag {
+      margin-top: 0;
     }
 
     .cell.has-day { background: #eef5fc; }
@@ -214,10 +397,6 @@
     .cell.is-today {
       box-shadow: 0 0 0 2px var(--accent), 0 6px 16px rgba(13, 122, 111, 0.18);
       background: #e7f6f3;
-    }
-
-    .cell.is-past:not(.is-today) {
-      opacity: 0.55;
     }
 
     .cell-top {
@@ -299,18 +478,6 @@
       border-radius: 999px;
       line-height: 1.35;
       letter-spacing: 0.02em;
-    }
-
-    .cell .tags {
-      margin-top: auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 3px;
-      align-items: center;
-    }
-
-    .cell .tags .tag {
-      margin-top: 0;
     }
 
     .cell .tag.day { background: rgba(43, 108, 176, 0.14); color: var(--day); }
@@ -624,7 +791,7 @@
         <h1>日历排班</h1>
         <a class="nav-link" href="./index.html">还款明细</a>
       </div>
-      <p>设定起始日后，按「白白中夜休休」循环排班；一次显示本月与下月。</p>
+      <p>设定起始日后，按「白白夜中休休」循环排班；一次显示本月与下月。</p>
     </header>
 
     <section class="panel">
@@ -688,11 +855,13 @@
     </section>
 
     <section class="panel calendar-panel">
-      <div class="calendar-months">
+      <TransitionGroup name="month-list" tag="div" class="calendar-months">
         <div
           v-for="month in months"
           :key="month.id"
           class="month-block"
+          :class="{ 'is-fresh': month.fresh }"
+          :ref="(el) => setMonthRef(month.id, el)"
         >
           <div class="month-title">{{ month.title }}</div>
           <div class="month-grid">
@@ -720,60 +889,66 @@
               >
                 <div class="cell-top">
                   <span class="date-num">{{ day.num }}</span>
-                  <span
-                    v-if="holidayOf(day.key)"
-                    class="mark"
-                    :class="holidayOf(day.key).type"
-                  >{{ holidayOf(day.key).type === 'off' ? '假' : '班' }}</span>
+                  <Transition name="mark-pop">
+                    <span
+                      v-if="holidayOf(day.key)"
+                      class="mark"
+                      :class="holidayOf(day.key).type"
+                    >{{ holidayOf(day.key).type === 'off' ? '假' : '班' }}</span>
+                  </Transition>
                 </div>
                 <span class="lunar">{{ day.lunar }}</span>
-                <div class="tags">
+                <TransitionGroup name="tag-pop" tag="div" class="tags">
                   <span
                     v-if="displayShift(day.key)"
+                    :key="'s-' + day.key"
                     class="tag"
                     :class="shiftClass(displayShift(day.key))"
                   >{{ displayShift(day.key) }}</span>
                   <span
                     v-if="holidayOf(day.key)"
+                    :key="'h-' + day.key"
                     class="tag"
                     :class="holidayOf(day.key).type === 'off' ? 'holiday' : 'workday'"
                   >{{ holidayOf(day.key).name }}</span>
-                </div>
+                </TransitionGroup>
               </div>
               <div v-else class="cell is-empty"></div>
             </div>
           </div>
         </div>
-      </div>
-      <div v-if="showHolidays" class="holiday-panel">
-        <h3>2026 法定节假日</h3>
-        <div class="holiday-list">
-          <div v-for="item in holidayList" :key="item.name" class="holiday-item">
-            <strong>{{ item.name }}</strong>
-            <span class="off-text">放假 {{ item.off }}</span>
-            <template v-if="item.work !== '无'">；<span class="work-text">{{ item.work }}</span></template>
+      </TransitionGroup>
+      <Transition name="fade-slide">
+        <div v-if="showHolidays" class="holiday-panel">
+          <h3>2026 法定节假日</h3>
+          <div class="holiday-list">
+            <div v-for="item in holidayList" :key="item.name" class="holiday-item">
+              <strong>{{ item.name }}</strong>
+              <span class="off-text">放假 {{ item.off }}</span>
+              <template v-if="item.work !== '无'">；<span class="work-text">{{ item.work }}</span></template>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
       <div class="add-month-row">
         <el-button type="primary" plain @click="addNextMonth">
           增加下一个月（{{ nextMonthLabel }}）
         </el-button>
       </div>
       <p class="hint">
-        起始日 {{ startDate }} 为周期第 1 天（白）。之后按 6 天一轮循环：白 → 白 → 中 → 夜 → 休 → 休。
+        起始日 {{ startDate }} 为周期第 1 天（白）。之后按 6 天一轮循环：白 → 白 → 夜 → 中 → 休 → 休。
         默认隐藏今日前排班与节假日信息，可分别用按钮切换；节假日开关会保存在本机。
       </p>
     </section>
   </div>
 
   <script>
-    const { createApp, ref, computed, watch } = Vue;
+    const { createApp, ref, computed, nextTick } = Vue;
     const { ElMessage } = ElementPlus;
 
     const STORAGE_KEY = "gjj-schedule-start";
     const STORAGE_SHOW_HOLIDAYS = "gjj-schedule-show-holidays";
-    const PATTERN = ["白", "白", "中", "夜", "休", "休"];
+    const PATTERN = ["白", "白", "夜", "中", "休", "休"];
     const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
     function toKey(d) {
@@ -828,7 +1003,7 @@
       return days;
     }
 
-    function makeMonth(year, monthIndex) {
+    function makeMonth(year, monthIndex, fresh = false) {
       const d = new Date(year, monthIndex, 1);
       const y = d.getFullYear();
       const m = d.getMonth();
@@ -836,6 +1011,7 @@
         id: `${y}-${m}`,
         title: `${y}年${m + 1}月`,
         days: buildMonthDays(y, m),
+        fresh,
       };
     }
 
@@ -852,6 +1028,12 @@
           makeMonth(now.getFullYear(), now.getMonth()),
           makeMonth(now.getFullYear(), now.getMonth() + 1),
         ]);
+        const monthEls = Object.create(null);
+
+        function setMonthRef(id, el) {
+          if (el) monthEls[id] = el;
+          else delete monthEls[id];
+        }
 
         const nextMonthLabel = computed(() => {
           const last = months.value[months.value.length - 1];
@@ -864,7 +1046,15 @@
           const last = months.value[months.value.length - 1];
           const [y, m] = last.id.split("-").map(Number);
           const d = new Date(y, m + 1, 1);
-          months.value.push(makeMonth(d.getFullYear(), d.getMonth()));
+          const month = makeMonth(d.getFullYear(), d.getMonth(), true);
+          months.value.push(month);
+          nextTick(() => {
+            monthEls[month.id]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            setTimeout(() => {
+              const target = months.value.find((item) => item.id === month.id);
+              if (target) target.fresh = false;
+            }, 1200);
+          });
         }
 
         const todayText = computed(() => {
@@ -956,6 +1146,7 @@
           togglePast,
           toggleHolidays,
           months,
+          setMonthRef,
           nextMonthLabel,
           addNextMonth,
           todayKey,
