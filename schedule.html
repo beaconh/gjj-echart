@@ -399,6 +399,14 @@
       background: #e7f6f3;
     }
 
+    .cell.is-work-highlight {
+      box-shadow: 0 0 0 2px #e53e3e;
+    }
+
+    .cell.is-today.is-work-highlight {
+      box-shadow: 0 0 0 2px #e53e3e, 0 6px 16px rgba(229, 62, 62, 0.2);
+    }
+
     .cell-top {
       display: flex;
       align-items: center;
@@ -822,11 +830,14 @@
         <div class="field">
           <label>显示控制</label>
           <div class="toggle-row">
-            <el-button :type="showPast ? 'primary' : 'default'" @click="togglePast">
-              {{ showPast ? '已显示今日前' : '已隐藏今日前' }}
+            <el-button :type="showWorkHighlight ? 'primary' : 'default'" @click="toggleWorkHighlight">
+              {{ showWorkHighlight ? '已标记白/中班' : '已隐藏白/中班标记' }}
             </el-button>
             <el-button :type="showHolidays ? 'primary' : 'default'" @click="toggleHolidays">
               {{ showHolidays ? '已显示节假日' : '已隐藏节假日' }}
+            </el-button>
+            <el-button :type="showPast ? 'primary' : 'default'" @click="togglePast">
+              {{ showPast ? '已显示今日前' : '已隐藏今日前' }}
             </el-button>
           </div>
         </div>
@@ -882,7 +893,8 @@
                 :class="[
                   {
                     'is-today': day.key === todayKey,
-                    'is-past': !showPast && day.key < todayKey
+                    'is-past': !showPast && day.key < todayKey,
+                    'is-work-highlight': isWorkHighlight(day.key)
                   },
                   cellTone(day.key)
                 ]"
@@ -937,7 +949,7 @@
       </div>
       <p class="hint">
         起始日 {{ startDate }} 为周期第 1 天（白）。之后按 6 天一轮循环：白 → 白 → 夜 → 中 → 休 → 休。
-        默认隐藏今日前排班与节假日信息，可分别用按钮切换；节假日开关会保存在本机。
+        默认隐藏今日前排班、节假日信息与白/中工作日红框标记，可分别用按钮切换；节假日开关会保存在本机。
       </p>
     </section>
   </div>
@@ -1021,6 +1033,7 @@
         const startDate = ref(saved || defaultStart());
         const showPast = ref(false);
         const showHolidays = ref(localStorage.getItem(STORAGE_SHOW_HOLIDAYS) === "1");
+        const showWorkHighlight = ref(false);
         const todayKey = toKey(new Date());
         const now = new Date();
 
@@ -1127,6 +1140,29 @@
           localStorage.setItem(STORAGE_SHOW_HOLIDAYS, showHolidays.value ? "1" : "0");
         }
 
+        function toggleWorkHighlight() {
+          showWorkHighlight.value = !showWorkHighlight.value;
+          showHolidays.value = showWorkHighlight.value;
+          localStorage.setItem(STORAGE_SHOW_HOLIDAYS, showHolidays.value ? "1" : "0");
+        }
+
+        /** 周一至周五（不含法定放假），或法定调休补班日 */
+        function isCivilWorkday(dayKey) {
+          const h = HolidayCalendar.get(dayKey);
+          if (h?.type === "work") return true;
+          if (h?.type === "off") return false;
+          const dow = parseKey(dayKey).getDay();
+          return dow >= 1 && dow <= 5;
+        }
+
+        /** 工作日里排到白/中班时加红框（需开启开关） */
+        function isWorkHighlight(dayKey) {
+          if (!showWorkHighlight.value) return false;
+          const s = shiftOf(dayKey);
+          if (s !== "白" && s !== "中") return false;
+          return isCivilWorkday(dayKey);
+        }
+
         function saveStart() {
           if (!startDate.value) return;
           localStorage.setItem(STORAGE_KEY, startDate.value);
@@ -1143,8 +1179,11 @@
           startDate,
           showPast,
           showHolidays,
+          showWorkHighlight,
           togglePast,
           toggleHolidays,
+          toggleWorkHighlight,
+          isWorkHighlight,
           months,
           setMonthRef,
           nextMonthLabel,
