@@ -1,0 +1,20 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: '17 1,9,17 * * *'
+  workflow_dispatch:
+
+jobs:
+  query:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query repayments
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$SUPABASE_URL" && test -n "$SUPABASE_PUBLISHABLE_KEY"
+          curl --fail --silent --show-error \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            "$SUPABASE_URL/rest/v1/repayments?select=row_index&limit=1" >/dev/null
