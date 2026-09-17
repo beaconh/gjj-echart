@@ -1349,14 +1349,28 @@
           configHint.value = '';
           cloudProvider.value = '';
 
+          async function loadLocalData() {
+            const res = await fetch('./assets/data.json');
+            if (!res.ok) throw new Error('无法加载 data.json');
+            const raw = await res.json();
+            list.value = mergeByPeriod(raw);
+          }
+
           if (window.GjjSupabase && window.GjjSupabase.isConfigured()) {
             cloudProvider.value = 'supabase';
-            let raw = await window.GjjSupabase.load();
-            if (!raw.length) {
-              raw = await maybeImportLocalToSupabase();
+            try {
+              let raw = await window.GjjSupabase.load();
+              if (!raw.length) {
+                raw = await maybeImportLocalToSupabase();
+              }
+              list.value = mergeByPeriod(raw);
+              return;
+            } catch (e) {
+              console.warn('Supabase 不可用，已回退到本地数据：', e);
+              cloudProvider.value = '';
+              await loadLocalData();
+              return;
             }
-            list.value = mergeByPeriod(raw);
-            return;
           }
 
           if (window.GjjJsonBin && window.GjjJsonBin.isConfigured()) {
@@ -1366,10 +1380,7 @@
             return;
           }
 
-          const res = await fetch('./assets/data.json');
-          if (!res.ok) throw new Error('无法加载 data.json');
-          const raw = await res.json();
-          list.value = mergeByPeriod(raw);
+          await loadLocalData();
         }
 
         async function copyJson() {
