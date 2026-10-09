@@ -39,9 +39,9 @@
 
       <section class="overview">
         <div class="overview-panel paid">
-          <h3>已还概况</h3>
+          <h3>已还概况 <span>截至 {{ list[list.length - 1].date }}</span></h3>
           <div class="hero-metric">
-            <span class="label">累计还款</span>
+            <span class="label">已还总额</span>
             <span class="value">{{ fmt(sum.total) }}</span>
           </div>
           <div class="paid-mix">
@@ -70,7 +70,7 @@
               <span class="v">{{ fmt(sum.penalty) }}</span>
             </div>
           </div>
-          <div class="metric-row four paid-extra">
+          <div class="metric-row two paid-extra">
             <div class="metric muted">
               <span class="k">已还期数</span>
               <span class="v">{{ paidStats.periods }} 期</span>
@@ -79,25 +79,17 @@
               <span class="k">平均每期</span>
               <span class="v">{{ fmt(paidStats.avgTotal) }}</span>
             </div>
-            <div class="metric interest">
-              <span class="k">利息占比</span>
-              <span class="v">{{ paidStats.interestPct }}%</span>
-            </div>
-            <div class="metric muted">
-              <span class="k">还款跨度</span>
-              <span class="v">{{ paidStats.spanText }}</span>
-            </div>
           </div>
           <p class="forecast-note">
-            {{ paidStats.rangeText }} · 共 {{ paidStats.records }} 条明细
+            已还 {{ paidStats.spanText }} · {{ paidStats.records }} 条还款明细
           </p>
         </div>
 
         <div class="overview-panel debt">
-          <h3>剩余与测算</h3>
+          <h3>未来还款 <span>等额本金测算</span></h3>
           <div class="hero-metric">
-            <span class="label">还欠银行（剩余本金）</span>
-            <span class="value">{{ fmt(remainPrincipal) }}</span>
+            <span class="label">预计还需支付（本息）</span>
+            <span class="value">{{ fmt(forecast.total) }}</span>
           </div>
           <div class="loan-progress">
             <div class="bar"><span :style="{ width: loanProgress + '%' }"></span></div>
@@ -106,22 +98,18 @@
               <span>已还本金 {{ loanProgress }}%</span>
             </div>
           </div>
-          <div class="metric-row four">
-            <div class="metric muted">
-              <span class="k">测算利率</span>
-              <span class="v">{{ forecast.rate }}%</span>
-            </div>
-            <div class="metric muted metric-link" @click="openScheduleDialog">
-              <span class="k">剩余期数</span>
-              <span class="v">{{ forecast.periods }} 期</span>
+          <div class="metric-row">
+            <div class="metric principal">
+              <span class="k">剩余本金</span>
+              <span class="v">{{ fmt(remainPrincipal) }}</span>
             </div>
             <div class="metric interest">
               <span class="k">预计剩余利息</span>
               <span class="v">{{ fmt(forecast.interest) }}</span>
             </div>
-            <div class="metric total">
-              <span class="k">预计还要还</span>
-              <span class="v">{{ fmt(forecast.total) }}</span>
+            <div class="metric muted">
+              <span class="k">剩余期数</span>
+              <span class="v">{{ forecast.periods }} 期</span>
             </div>
           </div>
           <div class="metric-row two">
@@ -130,14 +118,31 @@
               <span class="v">{{ fmt(forecast.nextPayment) }}</span>
             </div>
             <div class="metric muted">
-              <span class="k">还需要还</span>
-              <span class="v">{{ forecast.remainSpanText }}</span>
+              <span class="k">预计结清</span>
+              <span class="v">{{ forecast.maturity }}</span>
             </div>
           </div>
           <p class="forecast-note">
-            等额本金 · 年利率 {{ forecast.rate }}% · 到期 {{ forecast.maturity }} · 月供本金约 {{ fmt(forecast.monthlyPrincipal) }}；未含提前还款或利率再调整。
+            还需 {{ forecast.remainSpanText }} · 年利率 {{ forecast.rate }}% · 每期本金约 {{ fmt(forecast.monthlyPrincipal) }}
           </p>
         </div>
+      </section>
+
+      <section class="overview-actions" aria-label="还款快捷操作">
+        <div class="overview-action-copy">
+          <strong>还款规划</strong>
+          <span>查看每期待还金额，或测算提前还款后的变化。</span>
+        </div>
+        <button type="button" class="forecast-action" @click="openScheduleDialog">
+          <span>待还明细</span>
+          <small>查看未来 {{ forecast.periods }} 期还款</small>
+          <b aria-hidden="true">→</b>
+        </button>
+        <button type="button" class="forecast-action primary" @click="openPrepaymentDialog">
+          <span>提前还款测算</span>
+          <small>节省利息或缩短期限</small>
+          <b aria-hidden="true">→</b>
+        </button>
       </section>
 
       <section class="charts">
@@ -489,6 +494,55 @@
         </template>
       </el-dialog>
       <el-dialog
+        v-model="prepaymentVisible"
+        title="提前还款计算器"
+        :width="prepaymentDialogWidth"
+        destroy-on-close
+      >
+        <div class="schedule-summary">
+          <span>当前剩余本金 <strong>{{ fmt(remainPrincipal) }}</strong></span>
+          <span>剩余期数 <strong>{{ forecast.periods }} 期</strong></span>
+          <span>当前利率 <strong>{{ forecast.rate }}%</strong></span>
+        </div>
+        <el-form label-position="top" class="prepayment-form">
+          <el-form-item label="提前还款金额（元）">
+            <el-input-number
+              v-model="prepaymentForm.amount"
+              :min="0"
+              :max="remainPrincipal"
+              :precision="0"
+              :step="1000"
+              controls-position="right"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="提前还款后">
+            <el-radio-group v-model="prepaymentForm.mode">
+              <el-radio-button value="shorten">缩短期限</el-radio-button>
+              <el-radio-button value="reduce">减少月供</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+        </el-form>
+        <template v-if="prepaymentResult">
+          <div class="prepayment-saving">
+            <span>预计节省利息</span>
+            <strong>{{ fmt(prepaymentResult.savedInterest) }} 元</strong>
+          </div>
+          <div class="prepayment-details">
+            <span>提前还款后剩余本金 <strong>{{ fmt(prepaymentResult.principal) }} 元</strong></span>
+            <span>剩余期限 <strong>{{ forecast.periods }} 期 → {{ prepaymentResult.periods }} 期（{{ prepaymentResult.spanText }}）</strong></span>
+            <span>下期预计需还 <strong>{{ fmt(forecast.nextPayment) }} → {{ fmt(prepaymentResult.nextPayment) }} 元</strong></span>
+            <span>原剩余利息 <strong>{{ fmt(forecast.interest) }} 元</strong></span>
+            <span>提前还款后剩余利息 <strong>{{ fmt(prepaymentResult.interest) }} 元</strong></span>
+          </div>
+        </template>
+        <p v-else class="prepayment-empty">输入提前还款金额后，即可查看节省利息和新的还款计划。</p>
+        <p class="forecast-note">按当前剩余本金、期数和利率测算；实际以贷款银行结算结果及提前还款规则为准。</p>
+        <template #footer>
+          <el-button @click="prepaymentVisible = false">关闭</el-button>
+        </template>
+      </el-dialog>
+      <el-dialog
         v-model="scheduleVisible"
         title="待还款明细"
         :width="scheduleDialogWidth"
@@ -668,6 +722,34 @@
       };
     }
 
+    /** 等额本金提前还款测算：缩短期限时保持原每期本金，减少月供时保持原期限 */
+    function calcEqualPrincipalPrepayment({ principal, annualRatePercent, periods, prepaid, mode }) {
+      const amount = Math.min(Math.max(Number(prepaid) || 0, 0), principal);
+      const balanceAfterPrepay = principal - amount;
+      if (!amount || principal <= 0 || periods <= 0) return null;
+      if (balanceAfterPrepay <= 0) {
+        return { principal: 0, periods: 0, interest: 0, nextPayment: 0 };
+      }
+      const r = annualRatePercent / 100 / 12;
+      const monthlyPrincipal = mode === 'shorten'
+        ? principal / periods
+        : balanceAfterPrepay / periods;
+      let balance = balanceAfterPrepay;
+      let interest = 0;
+      let count = 0;
+      while (balance > 0.000001) {
+        interest += balance * r;
+        balance = Math.max(0, balance - Math.min(monthlyPrincipal, balance));
+        count += 1;
+      }
+      return {
+        principal: balanceAfterPrepay,
+        periods: count,
+        interest,
+        nextPayment: Math.min(monthlyPrincipal, balanceAfterPrepay) + balanceAfterPrepay * r,
+      };
+    }
+
     function addMonths(year, month, day, offset) {
       const d = new Date(year, month - 1 + offset, 1);
       const y = d.getFullYear();
@@ -738,6 +820,8 @@
         const addedRows = ref([]);
         const editingIndex = ref(null);
         const scheduleVisible = ref(false);
+        const prepaymentVisible = ref(false);
+        const prepaymentForm = reactive({ amount: 0, mode: 'shorten' });
         const jsonVisible = ref(false);
         const jsonTitle = ref('');
         const jsonText = ref('');
@@ -748,6 +832,9 @@
         const dialogWidth = computed(() => (isMobile.value ? '100%' : '480px'));
         const scheduleDialogWidth = computed(() =>
           isMobile.value ? '100%' : '860px'
+        );
+        const prepaymentDialogWidth = computed(() =>
+          isMobile.value ? '100%' : '560px'
         );
         const jsonDialogWidth = computed(() =>
           isMobile.value ? '100%' : '720px'
@@ -1019,12 +1106,36 @@
           });
         });
 
+        const prepaymentResult = computed(() => {
+          const result = calcEqualPrincipalPrepayment({
+            principal: remainPrincipal.value,
+            annualRatePercent: forecast.value.rate,
+            periods: forecast.value.periods,
+            prepaid: prepaymentForm.amount,
+            mode: prepaymentForm.mode,
+          });
+          if (!result) return null;
+          const years = Math.floor(result.periods / 12);
+          const months = result.periods % 12;
+          result.spanText = years ? `${years}年${months ? `${months}个月` : ''}` : `${months}个月`;
+          result.savedInterest = Math.max(0, forecast.value.interest - result.interest);
+          return result;
+        });
+
         function openScheduleDialog() {
           if (!forecast.value.periods) {
             ElMessage.warning('当前没有待还款期数');
             return;
           }
           scheduleVisible.value = true;
+        }
+
+        function openPrepaymentDialog() {
+          if (!forecast.value.periods || !remainPrincipal.value) {
+            ElMessage.warning('当前没有可提前还款的剩余本金');
+            return;
+          }
+          prepaymentVisible.value = true;
         }
 
         const tableList = computed(() =>
@@ -1770,6 +1881,11 @@
           loanProgress,
           paidStats,
           forecast,
+          prepaymentVisible,
+          prepaymentForm,
+          prepaymentResult,
+          prepaymentDialogWidth,
+          openPrepaymentDialog,
           scheduleVisible,
           scheduleRows,
           openScheduleDialog,

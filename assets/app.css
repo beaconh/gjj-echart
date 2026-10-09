@@ -86,9 +86,9 @@ header p {
 
 .overview {
   display: grid;
-  grid-template-columns: 1fr 1.15fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 
 .overview-panel {
@@ -103,11 +103,22 @@ header p {
 }
 
 .overview-panel h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--muted);
   letter-spacing: 0.04em;
   margin-bottom: 14px;
+}
+
+.overview-panel h3 span {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .hero-metric .label {
@@ -127,7 +138,7 @@ header p {
 }
 
 .overview-panel.paid .hero-metric .value { color: var(--total); }
-.overview-panel.debt .hero-metric .value { color: var(--rate); }
+.overview-panel.debt .hero-metric .value { color: var(--accent); }
 
 .metric-row {
   display: grid;
@@ -166,16 +177,156 @@ header p {
 .metric.total .v { color: var(--accent); }
 .metric.muted .v { color: var(--text); }
 
-.metric-link {
-  cursor: pointer;
-  border-radius: 8px;
-  padding: 6px 8px;
-  margin: -6px -8px;
-  transition: background 0.15s ease;
+.overview-actions {
+  display: grid;
+  grid-template-columns: 1.15fr repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow);
 }
 
-.metric-link:hover {
-  background: #f0f6fb;
+.overview-action-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 10px;
+}
+
+.overview-action-copy strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.overview-action-copy span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.forecast-action {
+  position: relative;
+  min-width: 0;
+  padding: 11px 34px 11px 12px;
+  border: 1px solid #b8cddd;
+  border-radius: 10px;
+  background: #f7fafc;
+  color: var(--principal);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.forecast-action:hover {
+  border-color: var(--principal);
+  background: #eef6fb;
+}
+
+.forecast-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.forecast-action:active {
+  transform: translateY(1px);
+}
+
+.forecast-action span,
+.forecast-action small {
+  display: block;
+}
+
+.forecast-action span {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.forecast-action small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.forecast-action b {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 1.05rem;
+}
+
+.forecast-action.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.forecast-action.primary:hover {
+  border-color: #09685f;
+  background: #09685f;
+}
+
+.forecast-action.primary small {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.prepayment-form .el-form-item {
+  margin-bottom: 16px;
+}
+
+.prepayment-saving {
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(135deg, #16806f, #2b6cb0);
+}
+
+.prepayment-saving span,
+.prepayment-saving strong {
+  display: block;
+}
+
+.prepayment-saving span {
+  font-size: 0.82rem;
+  opacity: 0.88;
+}
+
+.prepayment-saving strong {
+  margin-top: 5px;
+  font-size: 1.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.prepayment-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.prepayment-details span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prepayment-details strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.prepayment-empty {
+  margin: 0;
+  padding: 12px 0 4px;
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .schedule-summary {
@@ -601,6 +752,15 @@ header p {
 
   .overview { grid-template-columns: 1fr; }
 
+  .overview-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview-action-copy {
+    grid-column: 1 / -1;
+    padding: 2px 4px 6px;
+  }
+
   .metric-row,
   .metric-row.two,
   .metric-row.four { grid-template-columns: repeat(2, 1fr); }
@@ -663,11 +823,6 @@ header p {
 
   .metric .v {
     font-size: 0.95rem;
-  }
-
-  .metric-link {
-    padding: 8px;
-    margin: -4px -6px;
   }
 
   .loan-progress .meta {
@@ -797,6 +952,14 @@ header p {
 
   .forecast-note {
     font-size: 0.72rem;
+  }
+
+  .overview-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-action-copy {
+    grid-column: auto;
   }
 
   .badge {
